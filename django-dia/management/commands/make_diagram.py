@@ -8,6 +8,9 @@ django-extensions application code (graph_models command)
 
 from django.core.management.base import BaseCommand, CommandError
 from optparse import make_option
+import json
+import xml.etree.ElementTree as ET
+import random
 
 
 import os
@@ -16,6 +19,7 @@ import datetime
 from django.utils.translation import activate as activate_language
 from django.utils.safestring import mark_safe
 from django.template import Context, loader, Template
+from django.template.loader import render_to_string
 from django.db import models
 from django.db.models import get_models
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField, RelatedField
@@ -52,6 +56,32 @@ def get_model_abstract_fields(model):
             result.extend(e._meta.fields)
             result.extend(get_model_abstract_fields(e))
     return result
+
+
+def make_dia_attribute(parent, name, atype, value):
+    textnode = False
+    if atype == 'boolean':
+        value = 'true' if value else 'false'
+    elif atype == 'string':
+        value = u'#{}#'.format(value)
+        textnode = True
+    elif atype == 'real':
+        value = '{:.18f}'.format(value)
+    elif atype == 'point':
+        value = '{:.2f},{:.2f}'.format(*value)
+    elif atype == 'rectangle':
+        value = '{:.2f},{:.2f};{:.2f},{:.2f}'.format(*value)
+    elif atype == 'color':
+        value = '#' + value
+    else:
+        raise ValueError('Unknown type')
+    attr = ET.SubElement(parent, 'dia:attribute', attrib={'name': name})
+    a = {}
+    if not textnode:
+        a['val'] = value
+    v = ET.SubElement(attr, 'dia:{}'.format(atype), attrib=a)
+    if textnode:
+        v.text = value
 
 
 class Command(BaseCommand):
@@ -100,8 +130,64 @@ class Command(BaseCommand):
         self.inheritance = options['inheritance']
         self.sort_fields = options['sort_fields']
 
+        data = []
         for app in apps:
-            print(self.get_app_data(app))
+            data.extend(self.get_app_data(app))
+
+        ET.register_namespace('dia', 'http://www.lysator.liu.se/~alla/dia/')
+        ns = {'dia': 'http://www.lysator.liu.se/~alla/dia/'}
+        dom = ET.fromstring(render_to_string('django-dia/empty.xml', {}))
+        self.layer = dom.find('dia:layer', namespaces=ns)
+
+        for model_num, model in enumerate(data):
+            f = []
+            for field in model['fields']:
+                ff = {
+                    'name': field['name'],
+                    'type': field['type'],
+                    'comment': field['comment'],
+                    'primary_key': field['primary_key'],
+                    'nullable': field['null'],
+                    'unique': False, # TODO:
+                }
+                f.append(ff)
+            self.xml_make_table({
+                'id': model_num,
+                'pos': (random.random() * 40, random.random() * 40),
+                'name': model['name'],
+                'fields': f,
+            })
+
+        print(ET.tostring(dom, encoding='utf-8'))
+
+    def xml_make_table(self, data):
+        obj = ET.SubElement(self.layer, 'dia:object', attrib={
+            'type': 'Database - Table',
+            'version': '0',
+            'id': 'O{}'.format(data['id']),
+        })
+
+        make_dia_attribute(obj, 'elem_corner', 'point', data['pos'])
+        make_dia_attribute(obj, 'name', 'string', data['name'])
+
+        attr = ET.SubElement(obj, 'dia:attribute', attrib={'name': 'attributes'})
+        for field in data['fields']:
+            self.xml_make_field(attr, field)
+
+    def xml_make_field(self, parent, data):
+        field = ET.SubElement(parent, 'dia:composite', attrib={'type': 'table_attribute'})
+
+        xs = (
+            ('name', 'string'),
+            ('type', 'string'),
+            ('comment', 'string'),
+            ('primary_key', 'boolean'),
+            ('nullable', 'boolean'),
+            ('unique', 'boolean'),
+        )
+
+        for name, atype in xs:
+            make_dia_attribute(field, name, atype, data[name])
 
     def get_field_name(self, field):
         return field.verbose_name if self.verbose_names and field.verbose_name else field.name
@@ -146,9 +232,11 @@ class Command(BaseCommand):
 
         return {
             'name': field.name,
-            'label': label,
+            'comment': field.verbose_name,
+            'label': label, # TODO:
             'type': t,
             'blank': field.blank,
+            'null': field.null,
             'abstract': field in abstract_fields,
             'relation': isinstance(field, RelatedField),
             'primary_key': field.primary_key,
