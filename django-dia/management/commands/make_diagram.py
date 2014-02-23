@@ -59,7 +59,10 @@ def get_model_abstract_fields(model):
 
 
 def make_dia_attribute(parent, name, atype, value):
+    attr = ET.SubElement(parent, 'dia:attribute', attrib={'name': name})
+
     textnode = False
+    attribs = None
     if atype == 'boolean':
         value = 'true' if value else 'false'
     elif atype == 'string':
@@ -73,13 +76,16 @@ def make_dia_attribute(parent, name, atype, value):
         value = '{:.2f},{:.2f};{:.2f},{:.2f}'.format(*value)
     elif atype == 'color':
         value = '#' + value
+    elif atype == 'font':
+        attribs = {'family': unicode(value[0]), 'style': unicode(value[1]), 'name': unicode(value[2])}
     else:
         raise ValueError('Unknown type')
-    attr = ET.SubElement(parent, 'dia:attribute', attrib={'name': name})
-    a = {}
-    if not textnode:
-        a['val'] = value
-    v = ET.SubElement(attr, 'dia:{}'.format(atype), attrib=a)
+
+    if attribs is None:
+        attribs = {}
+    if not textnode and not attribs:
+        attribs['val'] = value
+    v = ET.SubElement(attr, 'dia:{}'.format(atype), attrib=attribs)
     if textnode:
         v.text = value
 
@@ -140,24 +146,14 @@ class Command(BaseCommand):
         self.layer = dom.find('dia:layer', namespaces=ns)
 
         for model_num, model in enumerate(data):
-            f = []
-            for field in model['fields']:
-                ff = {
-                    'name': field['name'],
-                    'type': field['type'],
-                    'comment': field['comment'],
-                    'primary_key': field['primary_key'],
-                    'nullable': field['null'],
-                    'unique': False, # TODO:
-                }
-                f.append(ff)
             self.xml_make_table({
                 'id': model_num,
                 'pos': (random.random() * 40, random.random() * 40),
                 'name': model['name'],
-                'fields': f,
+                'fields': model['fields'],
             })
 
+        print('<?xml version="1.0" encoding="UTF-8"?>')
         print(ET.tostring(dom, encoding='utf-8'))
 
     def xml_make_table(self, data):
@@ -167,8 +163,27 @@ class Command(BaseCommand):
             'id': 'O{}'.format(data['id']),
         })
 
+        attr = ET.SubElement(obj, 'dia:attribute', attrib={'name': 'meta'})
+        ET.SubElement(attr, 'dia:composite', attrib={'type': 'dict'})
+
         make_dia_attribute(obj, 'elem_corner', 'point', data['pos'])
         make_dia_attribute(obj, 'name', 'string', data['name'])
+        make_dia_attribute(obj, 'visible_comment', 'boolean', False)
+        make_dia_attribute(obj, 'tagging_comment', 'boolean', False)
+        make_dia_attribute(obj, 'underline_primary_key', 'boolean', True)
+        make_dia_attribute(obj, 'bold_primary_keys', 'boolean', False)
+
+        make_dia_attribute(obj, 'normal_font', 'font', ('monospace', 0, 'Courier'))
+        make_dia_attribute(obj, 'name_font', 'font', ('sans', 80, 'Helvetica-Bold'))
+        make_dia_attribute(obj, 'comment_font', 'font', ('sans', 8, 'Helvetica-Oblique'))
+        make_dia_attribute(obj, 'normal_font_height', 'real', 0.8)
+        make_dia_attribute(obj, 'name_font_height', 'real', 0.7)
+        make_dia_attribute(obj, 'comment_font_height', 'real', 0.7)
+
+        make_dia_attribute(obj, 'line_width', 'real', 0.1)
+        make_dia_attribute(obj, 'text_colour', 'color', '000000')
+        make_dia_attribute(obj, 'line_colour', 'color', '000000')
+        make_dia_attribute(obj, 'fill_colour', 'color', 'BEF944')
 
         attr = ET.SubElement(obj, 'dia:attribute', attrib={'name': 'attributes'})
         for field in data['fields']:
@@ -215,53 +230,35 @@ class Command(BaseCommand):
             'relations': self.get_model_relations(appmodel),
         }
 
-    def prepare_field(self, field, abstract_fields):
-        #label = self.get_field_name(field)
-        if self.verbose_names and field.verbose_name:
-            # TODO: bytes?
-            label = field.verbose_name.decode("utf8")
-            if label.islower():
-                label = label.capitalize()
-        else:
-            label = field.name
-
-        t = type(field).__name__
-        if isinstance(field, (OneToOneField, ForeignKey)):
-            t += " ({0})".format(field.rel.field_name)
-        # TODO: ManyToManyField, GenericRelation
-
+    def prepare_field(self, field):
         return {
             'name': field.name,
+            'type': type(field).__name__,
             'comment': field.verbose_name,
-            'label': label, # TODO:
-            'type': t,
-            'blank': field.blank,
-            'null': field.null,
-            'abstract': field in abstract_fields,
-            'relation': isinstance(field, RelatedField),
             'primary_key': field.primary_key,
+            'nullable': field.null,
+            'unique': field.unique,
         }
 
     def get_model_fields(self, appmodel):
         result = []
 
         fields = appmodel._meta.local_fields
-        abstract_fields = get_model_abstract_fields(appmodel)
 
         # find primary key and print it first, ignoring implicit id if other pk exists
         pk = appmodel._meta.pk
-        if pk and not appmodel._meta.abstract and pk in fields:
-            result.append(self.prepare_field(pk, abstract_fields))
+        if pk and pk in fields and not appmodel._meta.abstract:
+            result.append(self.prepare_field(pk))
 
         for field in fields:
             if self.get_field_name(field) in self.exclude_fields:
                 continue
             if pk and field == pk:
                 continue
-            result.append(self.prepare_field(field, abstract_fields))
+            result.append(self.prepare_field(field))
 
         if self.sort_fields:
-            result = sorted(result, key=lambda field: (not field['primary_key'], not field['relation'], field['label']))
+            result = sorted(result, key=lambda field: (not field['primary_key'], field['name']))
 
         return result
 
