@@ -138,6 +138,8 @@ class Command(BaseCommand):
                     default=True, help="Do not sort fields"),
     )
 
+    port_order = [2, 1, 3, 9, 8, 10]
+
     def handle(self, *args, **options):
         apps = []
         if options['all_applications']:
@@ -184,6 +186,7 @@ class Command(BaseCommand):
                 'name': self.get_model_name(model),
                 'fields': self.get_model_fields(model),
                 'color': get_model_color(app_colors, model),
+                'port_idx': 0,
             }
             self.xml_make_table(mdata)
             obj_ref.append((obj_num, model, mdata))
@@ -198,6 +201,11 @@ class Command(BaseCommand):
                 rel['end_obj_id'] = end_rec['id']
                 rel['start_field_num'] = field_index(start_rec, rel['start_field'])
                 rel['end_field_num'] = field_index(end_rec, rel['end_field'])
+                if rel['pk_target']:
+                    rel['target_port'] = self.port_order[end_rec['port_idx']]
+                    end_rec['port_idx'] += 1
+                    if end_rec['port_idx'] >= len(self.port_order):
+                        end_rec['port_idx'] = 0
                 self.xml_make_relation(rel)
                 obj_num += 1
 
@@ -269,10 +277,11 @@ class Command(BaseCommand):
             'to': 'O{}'.format(data['end_obj_id']),
             'connection': unicode(12 + data['end_field_num'] * 2),
         })
+        port = unicode(data['target_port']) if data['pk_target'] else unicode(12 + data['start_field_num'] * 2)
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '1',
             'to': 'O{}'.format(data['start_obj_id']),
-            'connection': unicode(12 + data['start_field_num'] * 2),
+            'connection': port,
         })
 
         attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'line_style'})
@@ -285,8 +294,8 @@ class Command(BaseCommand):
         make_dia_attribute(rel, 'end_arrow_width', 'real', 0.25)
         make_dia_attribute(rel, 'normal_font', 'font', ('monospace', 0, 'Courier'))
         make_dia_attribute(rel, 'normal_font_height', 'real', 0.7)
-        make_dia_attribute(rel, 'text_colour', 'color', '000000')
-        make_dia_attribute(rel, 'line_colour', 'color', '000000')
+        make_dia_attribute(rel, 'text_colour', 'color', data['color'])
+        make_dia_attribute(rel, 'line_colour', 'color', data['color'])
         make_dia_attribute(rel, 'line_width', 'real', 0.1)
         make_dia_attribute(rel, 'orth_autoroute', 'boolean', True)
 
@@ -374,6 +383,12 @@ class Command(BaseCommand):
         if self.get_model_name(target_model) in self.exclude_models:
             return
 
+        color = '000000'
+        if start_label == '1' and end_label == '1':
+            color = 'E2A639'
+        if start_label == 'n' and end_label == 'n':
+            color = '75A908'
+
         return {
             'start_label': start_label,
             'end_label': end_label,
@@ -383,6 +398,8 @@ class Command(BaseCommand):
             'end_field': target_field,
             'dotted': dotted,
             'directional': start_label != end_label,
+            'pk_target': target_field == target_model._meta.pk,
+            'color': color,
         }
 
     def get_model_relations(self, appmodel):
