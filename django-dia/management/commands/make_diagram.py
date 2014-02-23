@@ -70,6 +70,8 @@ def make_dia_attribute(parent, name, atype, value):
         textnode = True
     elif atype == 'real':
         value = '{:.18f}'.format(value)
+    elif atype == 'enum':
+        value = '{}'.format(value)
     elif atype == 'point':
         value = '{:.2f},{:.2f}'.format(*value)
     elif atype == 'rectangle':
@@ -88,6 +90,22 @@ def make_dia_attribute(parent, name, atype, value):
     v = ET.SubElement(attr, 'dia:{}'.format(atype), attrib=attribs)
     if textnode:
         v.text = value
+
+
+def get_rand_color():
+    r = int(random.random() * 80) + 175
+    g = int(random.random() * 80) + 175
+    b = int(random.random() * 80) + 175
+    return (hex(r)[-2:] + hex(g)[-2:] + hex(b)[-2:]).upper()
+
+
+def get_model_color(app_colors, model):
+    l = model._meta.app_label
+    if l in app_colors:
+        return app_colors[l]
+    newcolor = get_rand_color()
+    app_colors[l] = newcolor
+    return newcolor
 
 
 class Command(BaseCommand):
@@ -136,22 +154,53 @@ class Command(BaseCommand):
         self.inheritance = options['inheritance']
         self.sort_fields = options['sort_fields']
 
-        data = []
-        for app in apps:
-            data.extend(self.get_app_data(app))
-
         ET.register_namespace('dia', 'http://www.lysator.liu.se/~alla/dia/')
         ns = {'dia': 'http://www.lysator.liu.se/~alla/dia/'}
         dom = ET.fromstring(render_to_string('django-dia/empty.xml', {}))
         self.layer = dom.find('dia:layer', namespaces=ns)
 
-        for model_num, model in enumerate(data):
-            self.xml_make_table({
-                'id': model_num,
-                'pos': (random.random() * 40, random.random() * 40),
-                'name': model['name'],
-                'fields': model['fields'],
-            })
+        app_colors = {}
+
+        obj_num = 0
+        obj_ref = []
+
+        def find_model_data(obj_ref, model):
+            for num, m, data in obj_ref:
+                if model == m:
+                    return data
+            raise Exception('Model not found')
+
+        def field_index(modelrec, field):
+            for i, f in enumerate(modelrec['fields']):
+                if field == f['field']:
+                    return i
+            return -1
+
+        model_list = self.get_full_model_list(apps)
+        for model in model_list:
+            mdata = {
+                'id': obj_num,
+                'pos': (random.random() * 80, random.random() * 80),
+                'name': self.get_model_name(model),
+                'fields': self.get_model_fields(model),
+                'color': get_model_color(app_colors, model),
+            }
+            self.xml_make_table(mdata)
+            obj_ref.append((obj_num, model, mdata))
+            obj_num += 1
+
+        for model in model_list:
+            for rel in self.get_model_relations(model):
+                rel['id'] = obj_num
+                start_rec = find_model_data(obj_ref, rel['start_obj'])
+                end_rec = find_model_data(obj_ref, rel['end_obj'])
+                rel['start_obj_id'] = start_rec['id']
+                rel['end_obj_id'] = end_rec['id']
+                rel['start_field_num'] = field_index(start_rec, rel['start_field'])
+                rel['end_field_num'] = field_index(end_rec, rel['end_field'])
+                self.xml_make_relation(rel)
+                obj_num += 1
+
 
         print('<?xml version="1.0" encoding="UTF-8"?>')
         print(ET.tostring(dom, encoding='utf-8'))
@@ -183,7 +232,7 @@ class Command(BaseCommand):
         make_dia_attribute(obj, 'line_width', 'real', 0.1)
         make_dia_attribute(obj, 'text_colour', 'color', '000000')
         make_dia_attribute(obj, 'line_colour', 'color', '000000')
-        make_dia_attribute(obj, 'fill_colour', 'color', 'BEF944')
+        make_dia_attribute(obj, 'fill_colour', 'color', data['color'])
 
         attr = ET.SubElement(obj, 'dia:attribute', attrib={'name': 'attributes'})
         for field in data['fields']:
@@ -204,6 +253,43 @@ class Command(BaseCommand):
         for name, atype in xs:
             make_dia_attribute(field, name, atype, data[name])
 
+    def xml_make_relation(self, data):
+        rel = ET.SubElement(self.layer, 'dia:object', attrib={
+            'type': 'Database - Reference',
+            'version': '0',
+            'id': 'O{}'.format(data['id']),
+        })
+
+        make_dia_attribute(rel, 'start_point_desc', 'string', data['start_label'])
+        make_dia_attribute(rel, 'end_point_desc', 'string', data['end_label'])
+
+        conns = ET.SubElement(rel, 'dia:connections')
+        ET.SubElement(conns, 'dia:connection', attrib={
+            'handle': '0',
+            'to': 'O{}'.format(data['end_obj_id']),
+            'connection': unicode(12 + data['end_field_num'] * 2),
+        })
+        ET.SubElement(conns, 'dia:connection', attrib={
+            'handle': '1',
+            'to': 'O{}'.format(data['start_obj_id']),
+            'connection': unicode(12 + data['start_field_num'] * 2),
+        })
+
+        attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'line_style'})
+        ET.SubElement(attr, 'dia:enum', attrib={'val': '4' if data['dotted'] else '0'})
+        ET.SubElement(attr, 'dia:real', attrib={'val': '1'})
+
+        make_dia_attribute(rel, 'corner_radius', 'real', 0)
+        make_dia_attribute(rel, 'end_arrow', 'enum', 3 if data['directional'] else 0)
+        make_dia_attribute(rel, 'end_arrow_length', 'real', 0.25)
+        make_dia_attribute(rel, 'end_arrow_width', 'real', 0.25)
+        make_dia_attribute(rel, 'normal_font', 'font', ('monospace', 0, 'Courier'))
+        make_dia_attribute(rel, 'normal_font_height', 'real', 0.7)
+        make_dia_attribute(rel, 'text_colour', 'color', '000000')
+        make_dia_attribute(rel, 'line_colour', 'color', '000000')
+        make_dia_attribute(rel, 'line_width', 'real', 0.1)
+        make_dia_attribute(rel, 'orth_autoroute', 'boolean', True)
+
     def get_field_name(self, field):
         return field.verbose_name if self.verbose_names and field.verbose_name else field.name
 
@@ -219,6 +305,13 @@ class Command(BaseCommand):
             result.append(self.get_model_data(model))
         return result
 
+    def get_full_model_list(self, apps):
+        result = []
+        for app in apps:
+            result.extend(get_app_models_with_abstracts(app))
+        result = list(set(result))
+        return filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result)
+
     def get_model_data(self, appmodel):
         appmodel_abstracts = [abstract_model.__name__ for abstract_model in appmodel.__bases__
                               if hasattr(abstract_model, '_meta') and abstract_model._meta.abstract]
@@ -232,6 +325,7 @@ class Command(BaseCommand):
 
     def prepare_field(self, field):
         return {
+            'field': field,
             'name': field.name,
             'type': type(field).__name__,
             'comment': field.verbose_name,
@@ -262,22 +356,7 @@ class Command(BaseCommand):
 
         return result
 
-    def prepare_relation(self, field, extras):
-        # TODO: same field name formatting
-        if self.verbose_names and field.verbose_name:
-            label = field.verbose_name.decode("utf8")
-            if label.islower():
-                label = label.capitalize()
-        else:
-            label = field.name
-
-        # show related field name
-        if hasattr(field, 'related_query_name'):
-            related_query_name = field.related_query_name()
-            if self.verbose_names and related_query_name.islower():
-                related_query_name = related_query_name.replace('_', ' ').capitalize()
-            label += ' (%s)' % related_query_name
-
+    def prepare_relation(self, field, start_label, end_label, dotted=False):
         # handle self-relationships and lazy-relationships
         if isinstance(field.rel.to, six.string_types):
             if field.rel.to == 'self':
@@ -287,27 +366,28 @@ class Command(BaseCommand):
         else:
             target_model = field.rel.to
 
+        if hasattr(field.rel, 'field_name'):
+            target_field = target_model._meta.get_field(field.rel.field_name)
+        else:
+            target_field = target_model._meta.pk
+
+        if self.get_model_name(target_model) in self.exclude_models:
+            return
+
         return {
-            'target_app': target_model.__module__.replace('.', '_'),
-            'target': target_model.__name__,
-            'type': type(field).__name__,
-            'name': field.name,
-            'label': label,
-            'arrows': extras,
-            'needs_node': True
+            'start_label': start_label,
+            'end_label': end_label,
+            'start_obj': field.model,
+            'end_obj': target_model,
+            'start_field': field,
+            'end_field': target_field,
+            'dotted': dotted,
+            'directional': start_label != end_label,
         }
 
     def get_model_relations(self, appmodel):
         result = []
         abstract_fields = get_model_abstract_fields(appmodel)
-
-        def _add(rel):
-            if rel not in result and rel['target'] not in self.exclude_models:
-                result.append(rel)
-
-        def add(field, extras=''):
-            rel = self.prepare_relation(field, extras)
-            _add(rel)
 
         for field in appmodel._meta.local_fields:
             if field.attname.endswith('_ptr_id'):  # excluding field redundant with inheritance relation
@@ -317,9 +397,9 @@ class Command(BaseCommand):
             if self.get_field_name(field) in self.exclude_fields:
                 continue
             if isinstance(field, OneToOneField):
-                add(field, '[arrowhead=none, arrowtail=none, dir=both]')
+                result.append(self.prepare_relation(field, '1', '1'))
             elif isinstance(field, ForeignKey):
-                add(field, '[arrowhead=none, arrowtail=dot, dir=both]')
+                result.append(self.prepare_relation(field, '1', 'n'))
 
         for field in appmodel._meta.local_many_to_many:
             if self.get_field_name(field) in self.exclude_fields:
@@ -327,33 +407,31 @@ class Command(BaseCommand):
             if isinstance(field, ManyToManyField):
                 if (getattr(field, 'creates_table', False) or  # django 1.1.
                     (hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created)):  # django 1.2
-                    add(field, '[arrowhead=dot arrowtail=dot, dir=both]')
+                    result.append(self.prepare_relation(field, 'n', 'n'))
             elif isinstance(field, GenericRelation):
-                add(field, mark_safe('[style="dotted", arrowhead=normal, arrowtail=normal, dir=both]'))
+                result.append(self.prepare_relation(field, 'n', 'n', dotted=True))
 
-        def add_inh(parent):
-            l = 'multi-table'
-            if parent._meta.abstract:
-                l = 'abstract'
-            if appmodel._meta.proxy:
-                l = 'proxy'
-            l += r"\ninheritance"
-            rel = {
-                'target_app': parent.__module__.replace(".", "_"),
-                'target': parent.__name__,
-                'type': "inheritance",
-                'name': "inheritance",
-                'label': l,
-                'arrows': '[arrowhead=empty, arrowtail=none, dir=both]',
-                'needs_node': True,
-            }
-            # TODO: seems as if abstract models aren't part of models.getModels, which is why they are printed by this without any attributes.
-            _add(rel)
+        return [rel for rel in result if rel is not None]
 
-        if self.inheritance:
-            # add inheritance arrows
-            for parent in appmodel.__bases__:
-                if hasattr(parent, '_meta'):  # parent is a model
-                    add_inh(parent)
+    def get_inheritance_relations(self, model):
+        result = []
+        for parent in model.__bases__:
+            if hasattr(parent, '_meta'):  # parent is a model
+                add_inh(parent)
+                l = 'multi-table'
+                if parent._meta.abstract:
+                    l = 'abstract'
+                if appmodel._meta.proxy:
+                    l = 'proxy'
+                l += r"\ninheritance"
+                rel = {
+                    'target_app': parent.__module__.replace(".", "_"),
+                    'target': parent.__name__,
+                    'type': "inheritance",
+                    'name': "inheritance",
+                    'label': l,
+                    'arrows': '[arrowhead=empty, arrowtail=none, dir=both]',
+                    'needs_node': True,
+                }
+                # TODO: seems as if abstract models aren't part of models.getModels, which is why they are printed by this without any attributes.
 
-        return result
