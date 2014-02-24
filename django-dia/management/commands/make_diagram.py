@@ -176,7 +176,14 @@ class Command(BaseCommand):
             for i, f in enumerate(modelrec['fields']):
                 if field == f['field']:
                     return i
-            return -1
+            return None  # ManyToManyFields
+
+        def allocate_free_port(modelrec):
+            result = self.port_order[modelrec['port_idx']]
+            modelrec['port_idx'] += 1
+            if modelrec['port_idx'] >= len(self.port_order):
+                modelrec['port_idx'] = 0
+            return result
 
         model_list = self.get_full_model_list(apps)
         for model in model_list:
@@ -201,11 +208,10 @@ class Command(BaseCommand):
                 rel['end_obj_id'] = end_rec['id']
                 rel['start_field_num'] = field_index(start_rec, rel['start_field'])
                 rel['end_field_num'] = field_index(end_rec, rel['end_field'])
-                if rel['pk_target']:
-                    rel['target_port'] = self.port_order[end_rec['port_idx']]
-                    end_rec['port_idx'] += 1
-                    if end_rec['port_idx'] >= len(self.port_order):
-                        end_rec['port_idx'] = 0
+                if rel['pk_source'] or rel['start_field_num'] is None:
+                    rel['source_port'] = allocate_free_port(start_rec)
+                if rel['pk_target'] or rel['end_field_num'] is None:
+                    rel['target_port'] = allocate_free_port(end_rec)
                 self.xml_make_relation(rel)
                 obj_num += 1
 
@@ -272,12 +278,13 @@ class Command(BaseCommand):
         make_dia_attribute(rel, 'end_point_desc', 'string', data['end_label'])
 
         conns = ET.SubElement(rel, 'dia:connections')
+        port = unicode(data['target_port']) if 'target_port' in data else unicode(12 + data['end_field_num'] * 2)
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '0',
             'to': 'O{}'.format(data['end_obj_id']),
-            'connection': unicode(12 + data['end_field_num'] * 2),
+            'connection': port,
         })
-        port = unicode(data['target_port']) if data['pk_target'] else unicode(12 + data['start_field_num'] * 2)
+        port = unicode(data['source_port']) if 'source_port' in data else unicode(12 + data['start_field_num'] * 2)
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '1',
             'to': 'O{}'.format(data['start_obj_id']),
@@ -399,6 +406,7 @@ class Command(BaseCommand):
             'dotted': dotted,
             'directional': start_label != end_label,
             'pk_target': target_field == target_model._meta.pk,
+            'pk_source': field == field.model._meta.pk,
             'color': color,
         }
 
