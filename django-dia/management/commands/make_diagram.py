@@ -102,11 +102,15 @@ def get_model_color(app_colors, model):
     return newcolor
 
 
+class ModelNotFoundException(Exception):
+    pass
+
+
 def find_model_data(obj_ref, model):
     for num, m, data in obj_ref:
         if model == m:
             return data
-    raise Exception('Model not found')
+    raise ModelNotFoundException
 
 
 def field_index(modelrec, field):
@@ -140,7 +144,7 @@ class Command(BaseCommand):
                     help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
         make_option('--exclude-models', '-X', action='store', dest='exclude_models',
                     help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
-        make_option('--inheritance', '-e', action='store_true', dest='inheritance', default=True,
+        make_option('--inheritance', '-e', action='store_true', dest='inheritance',
                     help='Include inheritance arrows'),
         make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
                     default=True, help="Do not sort fields"),
@@ -191,6 +195,13 @@ class Command(BaseCommand):
                 self.prepare_relation_stage2(obj_ref, rel, obj_num)
                 self.xml_make_relation(rel)
                 obj_num += 1
+            if self.inheritance:
+                for rel in self.get_model_inheritance(model):
+                    try:
+                        self.prepare_relation_stage2(obj_ref, rel, obj_num)
+                        self.xml_make_relation(rel)
+                    except ModelNotFoundException:
+                        pass
 
         xml = '<?xml version="1.0" encoding="UTF-8"?>' + \
               ET.tostring(dom, encoding='utf-8')
@@ -211,10 +222,12 @@ class Command(BaseCommand):
         rel['start_obj_id'] = start_rec['id']
         rel['end_obj_id'] = end_rec['id']
 
-        idx = None if rel['start_field'].primary_key else field_index(start_rec, rel['start_field'])
+        idx = None if 'start_field' not in rel or rel['start_field'].primary_key\
+                   else field_index(start_rec, rel['start_field'])
         rel['start_port'] = allocate_free_port(start_rec) if idx is None else 12 + idx * 2
 
-        idx = None if rel['end_field'].primary_key else field_index(end_rec, rel['end_field'])
+        idx = None if 'end_field' not in rel or rel['end_field'].primary_key\
+                   else field_index(end_rec, rel['end_field'])
         rel['end_port'] = allocate_free_port(end_rec) if idx is None else 12 + idx * 2
 
     def xml_make_table(self, data):
@@ -433,25 +446,24 @@ class Command(BaseCommand):
 
         return [rel for rel in result if rel is not None]
 
-    def get_inheritance_relations(self, model):
+    def get_model_inheritance(self, model):
         result = []
         for parent in model.__bases__:
             if hasattr(parent, '_meta'):  # parent is a model
-                add_inh(parent)
                 l = 'multi-table'
                 if parent._meta.abstract:
                     l = 'abstract'
-                if appmodel._meta.proxy:
+                if model._meta.proxy:
                     l = 'proxy'
-                l += r"\ninheritance"
-                rel = {
-                    'target_app': parent.__module__.replace(".", "_"),
-                    'target': parent.__name__,
-                    'type': "inheritance",
-                    'name': "inheritance",
-                    'label': l,
-                    'arrows': '[arrowhead=empty, arrowtail=none, dir=both]',
-                    'needs_node': True,
-                }
-                # TODO: seems as if abstract models aren't part of models.getModels, which is why they are printed by this without any attributes.
-
+                result.append({
+                    'start_label': '',
+                    'end_label': l,
+                    'start_obj': model,
+                    'end_obj': parent,
+                    'dotted': True,
+                    'directional': True,
+                    'color': '000000',
+                })
+        return result
+        # TODO: seems as if abstract models aren't part of models.getModels,
+        # which is why they are printed by this without any attributes.
