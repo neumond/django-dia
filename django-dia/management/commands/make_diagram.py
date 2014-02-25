@@ -146,7 +146,6 @@ class Command(BaseCommand):
                     default=True, help="Do not sort fields"),
     )
 
-
     def handle(self, *args, **options):
         apps = []
         if options['all_applications']:
@@ -189,22 +188,12 @@ class Command(BaseCommand):
 
         for model in model_list:
             for rel in self.get_model_relations(model):
-                rel['id'] = obj_num
-                start_rec = find_model_data(obj_ref, rel['start_obj'])
-                end_rec = find_model_data(obj_ref, rel['end_obj'])
-                rel['start_obj_id'] = start_rec['id']
-                rel['end_obj_id'] = end_rec['id']
-                rel['start_field_num'] = field_index(start_rec, rel['start_field'])
-                rel['end_field_num'] = field_index(end_rec, rel['end_field'])
-                if rel['pk_source'] or rel['start_field_num'] is None:
-                    rel['source_port'] = allocate_free_port(start_rec)
-                if rel['pk_target'] or rel['end_field_num'] is None:
-                    rel['target_port'] = allocate_free_port(end_rec)
+                self.prepare_relation_stage2(obj_ref, rel, obj_num)
                 self.xml_make_relation(rel)
                 obj_num += 1
 
         xml = '<?xml version="1.0" encoding="UTF-8"?>' + \
-               ET.tostring(dom, encoding='utf-8')
+              ET.tostring(dom, encoding='utf-8')
 
         outfile = options['outputfile']
         if outfile:
@@ -214,6 +203,19 @@ class Command(BaseCommand):
                 f.write(xml)
         else:
             print(xml)
+
+    def prepare_relation_stage2(self, obj_ref, rel, num):
+        rel['id'] = num
+        start_rec = find_model_data(obj_ref, rel['start_obj'])
+        end_rec = find_model_data(obj_ref, rel['end_obj'])
+        rel['start_obj_id'] = start_rec['id']
+        rel['end_obj_id'] = end_rec['id']
+
+        idx = None if rel['start_field'].primary_key else field_index(start_rec, rel['start_field'])
+        rel['start_port'] = allocate_free_port(start_rec) if idx is None else 12 + idx * 2
+
+        idx = None if rel['end_field'].primary_key else field_index(end_rec, rel['end_field'])
+        rel['end_port'] = allocate_free_port(end_rec) if idx is None else 12 + idx * 2
 
     def xml_make_table(self, data):
         obj = ET.SubElement(self.layer, 'dia:object', attrib={
@@ -274,17 +276,15 @@ class Command(BaseCommand):
         make_dia_attribute(rel, 'end_point_desc', 'string', data['end_label'])
 
         conns = ET.SubElement(rel, 'dia:connections')
-        port = unicode(data['target_port']) if 'target_port' in data else unicode(12 + data['end_field_num'] * 2)
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '0',
             'to': 'O{}'.format(data['end_obj_id']),
-            'connection': port,
+            'connection': unicode(data['end_port']),
         })
-        port = unicode(data['source_port']) if 'source_port' in data else unicode(12 + data['start_field_num'] * 2)
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '1',
             'to': 'O{}'.format(data['start_obj_id']),
-            'connection': port,
+            'connection': unicode(data['start_port']),
         })
 
         attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'line_style'})
@@ -374,7 +374,7 @@ class Command(BaseCommand):
             if field.rel.to == 'self':
                 target_model = field.model
             else:
-                raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'\
+                raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
                                 .format(field.model.__name__, field.name))
         else:
             target_model = field.rel.to
@@ -402,8 +402,6 @@ class Command(BaseCommand):
             'end_field': target_field,
             'dotted': dotted,
             'directional': start_label != end_label,
-            'pk_target': target_field == target_model._meta.pk,
-            'pk_source': field == field.model._meta.pk,
             'color': color,
         }
 
@@ -428,7 +426,7 @@ class Command(BaseCommand):
                 continue
             if isinstance(field, ManyToManyField):
                 if (getattr(field, 'creates_table', False) or  # django 1.1.
-                    (hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created)):  # django 1.2
+                   (hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created)):  # django 1.2
                     result.append(self.prepare_relation(field, 'n', 'n'))
             elif isinstance(field, GenericRelation):
                 result.append(self.prepare_relation(field, 'n', 'n', dotted=True))
