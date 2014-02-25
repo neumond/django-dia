@@ -156,6 +156,8 @@ class Command(BaseCommand):
                     help='Include inheritance arrows'),
         make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
                     default=True, help="Do not sort fields"),
+        make_option('--bezier', action='store_true', dest='bezier',
+                    help='Use bezier arrows instead of database relation arrows'),
     )
 
     def handle(self, *args, **options):
@@ -173,6 +175,7 @@ class Command(BaseCommand):
         self.exclude_fields = parse_file_or_list(options['exclude_columns'])
         self.inheritance = options['inheritance']
         self.sort_fields = options['sort_fields']
+        self.bezier = options['bezier']
 
         ET.register_namespace('dia', 'http://www.lysator.liu.se/~alla/dia/')
         ns = {'dia': 'http://www.lysator.liu.se/~alla/dia/'}
@@ -288,13 +291,34 @@ class Command(BaseCommand):
 
     def xml_make_relation(self, data):
         rel = ET.SubElement(self.layer, 'dia:object', attrib={
-            'type': 'Database - Reference',
+            'type': 'Standard - BezierLine' if self.bezier else 'Database - Reference',
             'version': '0',
             'id': 'O{}'.format(data['id']),
         })
 
-        make_dia_attribute(rel, 'start_point_desc', 'string', data['start_label'])
-        make_dia_attribute(rel, 'end_point_desc', 'string', data['end_label'])
+        line_style = '4' if data['dotted'] else '0'
+        if self.bezier:
+            make_dia_attribute(rel, 'line_style', 'enum', line_style)
+            attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'corner_types'})
+            ET.SubElement(attr, 'dia:enum', attrib={'val': '0'})
+            ET.SubElement(attr, 'dia:enum', attrib={'val': '0'})
+            attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'bez_points'})
+            ET.SubElement(attr, 'dia:point', attrib={'val': '0.0,0.0'})
+            ET.SubElement(attr, 'dia:point', attrib={'val': '0.0,0.0'})
+            ET.SubElement(attr, 'dia:point', attrib={'val': '0.0,0.0'})
+            ET.SubElement(attr, 'dia:point', attrib={'val': '0.0,0.0'})
+        else:
+            attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'line_style'})
+            ET.SubElement(attr, 'dia:enum', attrib={'val': line_style})
+            ET.SubElement(attr, 'dia:real', attrib={'val': '1'})
+
+            make_dia_attribute(rel, 'start_point_desc', 'string', data['start_label'])
+            make_dia_attribute(rel, 'end_point_desc', 'string', data['end_label'])
+            make_dia_attribute(rel, 'corner_radius', 'real', 0)
+            make_dia_attribute(rel, 'normal_font', 'font', ('monospace', 0, 'Courier'))
+            make_dia_attribute(rel, 'normal_font_height', 'real', 0.7)
+            make_dia_attribute(rel, 'text_colour', 'color', data['color'])
+            make_dia_attribute(rel, 'orth_autoroute', 'boolean', True)
 
         conns = ET.SubElement(rel, 'dia:connections')
         ET.SubElement(conns, 'dia:connection', attrib={
@@ -303,25 +327,16 @@ class Command(BaseCommand):
             'connection': unicode(data['end_port']),
         })
         ET.SubElement(conns, 'dia:connection', attrib={
-            'handle': '1',
+            'handle': '3' if self.bezier else '1',
             'to': 'O{}'.format(data['start_obj_id']),
             'connection': unicode(data['start_port']),
         })
 
-        attr = ET.SubElement(rel, 'dia:attribute', attrib={'name': 'line_style'})
-        ET.SubElement(attr, 'dia:enum', attrib={'val': '4' if data['dotted'] else '0'})
-        ET.SubElement(attr, 'dia:real', attrib={'val': '1'})
-
-        make_dia_attribute(rel, 'corner_radius', 'real', 0)
         make_dia_attribute(rel, 'end_arrow', 'enum', 3 if data['directional'] else 0)
         make_dia_attribute(rel, 'end_arrow_length', 'real', 0.25)
         make_dia_attribute(rel, 'end_arrow_width', 'real', 0.25)
-        make_dia_attribute(rel, 'normal_font', 'font', ('monospace', 0, 'Courier'))
-        make_dia_attribute(rel, 'normal_font_height', 'real', 0.7)
-        make_dia_attribute(rel, 'text_colour', 'color', data['color'])
         make_dia_attribute(rel, 'line_colour', 'color', data['color'])
         make_dia_attribute(rel, 'line_width', 'real', 0.1)
-        make_dia_attribute(rel, 'orth_autoroute', 'boolean', True)
 
     def get_field_name(self, field):
         return field.verbose_name if self.verbose_names and field.verbose_name else field.name
