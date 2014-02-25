@@ -6,23 +6,17 @@ Django model to DOT (Graphviz) converter
 django-extensions application code (graph_models command)
 """
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from optparse import make_option
-import json
 import xml.etree.ElementTree as ET
 import random
-
-
 import os
 import six
-import datetime
-from django.utils.translation import activate as activate_language
-from django.utils.safestring import mark_safe
-from django.template import Context, loader, Template
+import gzip
 from django.template.loader import render_to_string
 from django.db import models
 from django.db.models import get_models
-from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField, RelatedField
+from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 
 try:
     from django.db.models.fields.generic import GenericRelation
@@ -108,37 +102,50 @@ def get_model_color(app_colors, model):
     return newcolor
 
 
+def find_model_data(obj_ref, model):
+    for num, m, data in obj_ref:
+        if model == m:
+            return data
+    raise Exception('Model not found')
+
+
+def field_index(modelrec, field):
+    for i, f in enumerate(modelrec['fields']):
+        if field == f['field']:
+            return i
+    return None  # ManyToManyFields
+
+
+def allocate_free_port(modelrec):
+    result = allocate_free_port.port_order[modelrec['port_idx']]
+    modelrec['port_idx'] += 1
+    if modelrec['port_idx'] >= len(allocate_free_port.port_order):
+        modelrec['port_idx'] = 0
+    return result
+
+allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
+
+
 class Command(BaseCommand):
     help = 'Generate .dia diagram of your django project\'s models'
     args = '[appname]'
     option_list = BaseCommand.option_list + (
-        #make_option('--disable-fields', '-d', action='store_true', dest='disable_fields',
-                    #help='Do not show the class member fields'),
-        #make_option('--group-models', '-g', action='store_true', dest='group_models',
-                    #help='Group models together respective to their application'),
         make_option('--all-applications', '-a', action='store_true', dest='all_applications',
                     help='Automatically include all applications from INSTALLED_APPS'),
         make_option('--output', '-o', action='store', dest='outputfile',
                     help='Render output file.'),
         make_option('--verbose-names', '-n', action='store_true', dest='verbose_names',
                     help='Use verbose_name of models and fields'),
-        #make_option('--language', '-L', action='store', dest='language',
-                    #help='Specify language used for verbose_name localization'),
         make_option('--exclude-columns', '-x', action='store', dest='exclude_columns',
                     help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
         make_option('--exclude-models', '-X', action='store', dest='exclude_models',
                     help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
         make_option('--inheritance', '-e', action='store_true', dest='inheritance', default=True,
-                    help='Include inheritance arrows (default)'),
-        make_option('--no-inheritance', '-E', action='store_false', dest='inheritance',
-                    help='Do not include inheritance arrows'),
-        make_option('--hide-relations-from-fields', '-R', action='store_false', dest="relations_as_fields",
-                    default=True, help="Do not show relations as fields in the graph."),
+                    help='Include inheritance arrows'),
         make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
                     default=True, help="Do not sort fields"),
     )
 
-    port_order = [2, 1, 3, 9, 8, 10]
 
     def handle(self, *args, **options):
         apps = []
@@ -165,25 +172,6 @@ class Command(BaseCommand):
 
         obj_num = 0
         obj_ref = []
-
-        def find_model_data(obj_ref, model):
-            for num, m, data in obj_ref:
-                if model == m:
-                    return data
-            raise Exception('Model not found')
-
-        def field_index(modelrec, field):
-            for i, f in enumerate(modelrec['fields']):
-                if field == f['field']:
-                    return i
-            return None  # ManyToManyFields
-
-        def allocate_free_port(modelrec):
-            result = self.port_order[modelrec['port_idx']]
-            modelrec['port_idx'] += 1
-            if modelrec['port_idx'] >= len(self.port_order):
-                modelrec['port_idx'] = 0
-            return result
 
         model_list = self.get_full_model_list(apps)
         for model in model_list:
@@ -215,9 +203,17 @@ class Command(BaseCommand):
                 self.xml_make_relation(rel)
                 obj_num += 1
 
+        xml = '<?xml version="1.0" encoding="UTF-8"?>' + \
+               ET.tostring(dom, encoding='utf-8')
 
-        print('<?xml version="1.0" encoding="UTF-8"?>')
-        print(ET.tostring(dom, encoding='utf-8'))
+        outfile = options['outputfile']
+        if outfile:
+            if outfile[-4:] != '.dia':
+                outfile += '.dia'
+            with gzip.open(outfile, 'wb') as f:
+                f.write(xml)
+        else:
+            print(xml)
 
     def xml_make_table(self, data):
         obj = ET.SubElement(self.layer, 'dia:object', attrib={
@@ -378,7 +374,8 @@ class Command(BaseCommand):
             if field.rel.to == 'self':
                 target_model = field.model
             else:
-                raise Exception("Lazy relationship for model (%s) must be explicit for field (%s)" % (field.model.__name__, field.name))
+                raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'\
+                                .format(field.model.__name__, field.name))
         else:
             target_model = field.rel.to
 
