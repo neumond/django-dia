@@ -129,6 +129,14 @@ def allocate_free_port(modelrec):
 
 allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 
+# 0 - 1 - 2 - 3 - 4
+# 5    title      6
+# -----------------
+# 12             13
+# 14             15
+#      ...
+# 7 - 8 - 9 -10 -11
+
 
 class Command(BaseCommand):
     help = 'Generate .dia diagram of your django project\'s models'
@@ -321,32 +329,12 @@ class Command(BaseCommand):
     def get_model_name(self, model):
         return model._meta.object_name
 
-    def get_app_data(self, app):
-        models = get_app_models_with_abstracts(app)
-        result = []
-        for model in models:
-            if self.get_model_name(model) in self.exclude_models:
-                continue
-            result.append(self.get_model_data(model))
-        return result
-
     def get_full_model_list(self, apps):
         result = []
         for app in apps:
             result.extend(get_app_models_with_abstracts(app))
         result = list(set(result))
         return filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result)
-
-    def get_model_data(self, appmodel):
-        appmodel_abstracts = [abstract_model.__name__ for abstract_model in appmodel.__bases__
-                              if hasattr(abstract_model, '_meta') and abstract_model._meta.abstract]
-        return {
-            'app_name': appmodel.__module__.replace(".", "_"),
-            'name': appmodel.__name__,
-            'abstracts': appmodel_abstracts,
-            'fields': self.get_model_fields(appmodel),
-            'relations': self.get_model_relations(appmodel),
-        }
 
     def prepare_field(self, field):
         return {
