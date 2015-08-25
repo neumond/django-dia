@@ -28,7 +28,7 @@ except ImportError:
 def parse_file_or_list(arg):
     if not arg:
         return []
-    if not ',' in arg and os.path.isfile(arg):
+    if ',' not in arg and os.path.isfile(arg):
         return [e.strip() for e in open(arg).readlines()]
     return arg.split(',')
 
@@ -171,7 +171,7 @@ class Command(BaseCommand):
 
         for app_label in args:
             app = models.get_app(app_label)
-            if not app in apps:
+            if app not in apps:
                 apps.append(app)
 
         self.verbose_names = options['verbose_names']
@@ -219,7 +219,7 @@ class Command(BaseCommand):
                         pass
 
         xml = six.b('<?xml version="1.0" encoding="UTF-8"?>') + \
-              ET.tostring(dom, encoding='utf-8')
+            ET.tostring(dom, encoding='utf-8')
 
         outfile = options['outputfile']
         if outfile:
@@ -238,11 +238,11 @@ class Command(BaseCommand):
         rel['end_obj_id'] = end_rec['id']
 
         idx = None if 'start_field' not in rel or rel['start_field'].primary_key\
-                   else field_index(start_rec, rel['start_field'])
+            else field_index(start_rec, rel['start_field'])
         rel['start_port'] = allocate_free_port(start_rec) if idx is None else 12 + idx * 2
 
         idx = None if 'end_field' not in rel or rel['end_field'].primary_key\
-                   else field_index(end_rec, rel['end_field'])
+            else field_index(end_rec, rel['end_field'])
         rel['end_port'] = allocate_free_port(end_rec) if idx is None else 12 + idx * 2
 
     def xml_make_table(self, data):
@@ -432,7 +432,8 @@ class Command(BaseCommand):
         for field in appmodel._meta.local_fields:
             if field.attname.endswith('_ptr_id'):  # excluding field redundant with inheritance relation
                 continue
-            if field in abstract_fields:  # excluding fields inherited from abstract classes. they too show as local_fields
+            if field in abstract_fields:
+                # excluding fields inherited from abstract classes. they too show as local_fields
                 continue
             if self.get_field_name(field) in self.exclude_fields:
                 continue
