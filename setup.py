@@ -17,7 +17,7 @@ if is_register_command(argv[1:]):
 
 setup(
     name='django-dia',
-    version='0.1',
+    version='0.2',
     description='Generate .dia diagram of your django project\'s models',
     long_description=longdesc,
     url='https://github.com/neumond/django-dia',
@@ -25,10 +25,11 @@ setup(
     author_email='knifeslaughter@gmail.com',
     license='MIT',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
     ],
     keywords='django dia model diagram',
     packages=['django-dia', 'django-dia.management', 'django-dia.management.commands'],
