@@ -13,6 +13,13 @@ But dia support `was dropped`_.
 .. _django-extensions: https://github.com/django-extensions/django-extensions
 .. _was dropped: https://bugs.launchpad.net/ubuntu/+source/graphviz/+bug/745669
 
+Installation
+============
+
+.. code:: bash
+
+    pip install django-dia
+
 Using
 =====
 
