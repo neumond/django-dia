@@ -73,7 +73,11 @@ def make_dia_attribute(parent, name, atype, value):
     elif atype == 'color':
         value = '#' + value
     elif atype == 'font':
-        attribs = {'family': unicode(value[0]), 'style': unicode(value[1]), 'name': unicode(value[2])}
+        attribs = {
+            'family': six.text_type(value[0]),
+            'style': six.text_type(value[1]),
+            'name': six.text_type(value[2])
+        }
     else:
         raise ValueError('Unknown type')
 
@@ -214,7 +218,7 @@ class Command(BaseCommand):
                     except ModelNotFoundException:
                         pass
 
-        xml = '<?xml version="1.0" encoding="UTF-8"?>' + \
+        xml = six.b('<?xml version="1.0" encoding="UTF-8"?>') + \
               ET.tostring(dom, encoding='utf-8')
 
         outfile = options['outputfile']
@@ -224,7 +228,7 @@ class Command(BaseCommand):
             with gzip.open(outfile, 'wb') as f:
                 f.write(xml)
         else:
-            print(xml)
+            print(xml.decode('utf-8'))
 
     def prepare_relation_stage2(self, obj_ref, rel, num):
         rel['id'] = num
@@ -324,12 +328,12 @@ class Command(BaseCommand):
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '0',
             'to': 'O{}'.format(data['end_obj_id']),
-            'connection': unicode(data['end_port']),
+            'connection': six.text_type(data['end_port']),
         })
         ET.SubElement(conns, 'dia:connection', attrib={
             'handle': '3' if self.bezier else '1',
             'to': 'O{}'.format(data['start_obj_id']),
-            'connection': unicode(data['start_port']),
+            'connection': six.text_type(data['start_port']),
         })
 
         make_dia_attribute(rel, 'end_arrow', 'enum', 3 if data['directional'] else 0)
@@ -349,7 +353,7 @@ class Command(BaseCommand):
         for app in apps:
             result.extend(get_app_models_with_abstracts(app))
         result = list(set(result))
-        return filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result)
+        return list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
 
     def prepare_field(self, field):
         return {
