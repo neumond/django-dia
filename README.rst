@@ -29,7 +29,7 @@ Add *django-dia* to your *INSTALLED_APPS*:
 
     INSTALLED_APPS = (
         #...
-        'djando-dia',
+        'django-dia',
     )
 
 And run
