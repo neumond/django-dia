@@ -6,6 +6,10 @@ Django model to DOT (Graphviz) converter
 django-extensions application code (graph_models command)
 """
 
+from distutils.version import StrictVersion
+from django import get_version
+DJANGO_VERSION = get_version()
+
 from django.core.management.base import BaseCommand
 from optparse import make_option
 import xml.etree.ElementTree as ET
@@ -15,14 +19,28 @@ import six
 import gzip
 from django.template.loader import render_to_string
 from django.db import models
-from django.db.models import get_models
+
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.7'):
+    from django.apps import apps
+    get_models = apps.get_models
+    get_apps = apps.app_configs.items
+    get_app = apps.get_app_config
+
+else:
+    from django.db.models import get_models
+    from django.db.models import get_apps
+    from django.db.models import get_app
+
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 
-try:
-    from django.db.models.fields.generic import GenericRelation
-    assert GenericRelation
-except ImportError:
-    from django.contrib.contenttypes.generic import GenericRelation
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
+    from django.contrib.contenttypes.fields import GenericRelation
+else:
+    try:
+        from django.db.models.fields.generic import GenericRelation
+        assert GenericRelation
+    except ImportError:
+        from django.contrib.contenttypes.generic import GenericRelation
 
 
 def parse_file_or_list(arg):
@@ -167,10 +185,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         apps = []
         if options['all_applications']:
-            apps = models.get_apps()
+            apps = list(get_apps())
 
         for app_label in args:
-            app = models.get_app(app_label)
+            app = get_app(app_label)
             if app not in apps:
                 apps.append(app)
 
