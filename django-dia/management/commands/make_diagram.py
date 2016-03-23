@@ -411,14 +411,20 @@ class Command(BaseCommand):
         if isinstance(field.rel.to, six.string_types):
             if field.rel.to == 'self':
                 target_model = field.model
+            elif field.rel.to == 'auth.User':
+                from django.contrib.auth import get_user_model
+                target_model = get_user_model()
+            elif field.rel.to == 'sites.Site':
+                from django.contrib.sites.models import Site
+                target_model = Site
             else:
                 raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
                                 .format(field.model.__name__, field.name))
         else:
             target_model = field.rel.to
 
-        if hasattr(field.rel, 'field_name'):
-            target_field = target_model._meta.get_field(field.rel.field_name)
+        if getattr(field.rel, 'field_name', None):
+                target_field = target_model._meta.get_field(field.rel.field_name)
         else:
             target_field = target_model._meta.pk
 
