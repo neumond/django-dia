@@ -1,5 +1,6 @@
 *.py[cod]
-__pycache__
-.pip
+__pycache__/
+.venv/
 /dist/
 /*.egg-info/
+/build/

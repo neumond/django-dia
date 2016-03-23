@@ -228,7 +228,7 @@ class Command(BaseCommand):
             with gzip.open(outfile, 'wb') as f:
                 f.write(xml)
         else:
-            print(xml.decode('utf-8'))
+            self.stdout.write(xml.decode('utf-8'))
 
     def prepare_relation_stage2(self, obj_ref, rel, num):
         rel['id'] = num
