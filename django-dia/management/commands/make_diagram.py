@@ -125,14 +125,17 @@ def get_model_color(app_colors, model):
 
 
 class ModelNotFoundException(Exception):
-    pass
+    def __init__(self, value):
+        self.value = value
 
+    def __str__(self):
+        return repr(self.value)
 
 def find_model_data(obj_ref, model):
     for num, m, data in obj_ref:
         if model == m:
             return data
-    raise ModelNotFoundException
+    raise ModelNotFoundException("No model '%s' in %s" % (repr(model), repr([m for num, m, data in obj_ref])))
 
 
 def field_index(modelrec, field):
@@ -174,6 +177,8 @@ class Command(BaseCommand):
                     help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
         make_option('--exclude-models', '-X', action='store', dest='exclude_models',
                     help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
+        make_option('--exclude-modules', '-M', action='store', dest='exclude_modules',
+                    help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
         make_option('--inheritance', '-e', action='store_true', dest='inheritance',
                     help='Include inheritance arrows'),
         make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
@@ -193,6 +198,7 @@ class Command(BaseCommand):
                 apps.append(app)
 
         self.verbose_names = options['verbose_names']
+        self.exclude_modules = parse_file_or_list(options['exclude_modules'])
         self.exclude_models = parse_file_or_list(options['exclude_models'])
         self.exclude_fields = parse_file_or_list(options['exclude_columns'])
         self.inheritance = options['inheritance']
@@ -225,9 +231,12 @@ class Command(BaseCommand):
 
         for model in model_list:
             for rel in self.get_model_relations(model):
-                self.prepare_relation_stage2(obj_ref, rel, obj_num)
-                self.xml_make_relation(rel)
-                obj_num += 1
+                try:
+                    self.prepare_relation_stage2(obj_ref, rel, obj_num)
+                    self.xml_make_relation(rel)
+                    obj_num += 1
+                except ModelNotFoundException:
+                    pass
             if self.inheritance:
                 for rel in self.get_model_inheritance(model):
                     try:
@@ -370,8 +379,14 @@ class Command(BaseCommand):
         result = []
         for app in apps:
             result.extend(get_app_models_with_abstracts(app))
+
         result = list(set(result))
-        return list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
+        if self.exclude_modules:
+            result = list(filter(lambda model:  model.__module__ not in self.exclude_modules, result))
+        if self.exclude_fields:
+            result = list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
+
+        return result
 
     def prepare_field(self, field):
         return {
