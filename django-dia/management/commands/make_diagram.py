@@ -20,7 +20,7 @@ import gzip
 from django.template.loader import render_to_string
 from django.db import models
 
-if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.7'):
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
     from django.apps import apps
     get_models = apps.get_models
     get_apps = apps.app_configs.items
