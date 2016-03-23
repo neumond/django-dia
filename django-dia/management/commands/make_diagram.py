@@ -6,6 +6,10 @@ Django model to DOT (Graphviz) converter
 django-extensions application code (graph_models command)
 """
 
+from distutils.version import StrictVersion
+from django import get_version
+DJANGO_VERSION = get_version()
+
 from django.core.management.base import BaseCommand
 from optparse import make_option
 import xml.etree.ElementTree as ET
@@ -15,14 +19,28 @@ import six
 import gzip
 from django.template.loader import render_to_string
 from django.db import models
-from django.db.models import get_models
+
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
+    from django.apps import apps
+    get_models = apps.get_models
+    get_apps = apps.app_configs.items
+    get_app = apps.get_app_config
+
+else:
+    from django.db.models import get_models
+    from django.db.models import get_apps
+    from django.db.models import get_app
+
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 
-try:
-    from django.db.models.fields.generic import GenericRelation
-    assert GenericRelation
-except ImportError:
-    from django.contrib.contenttypes.generic import GenericRelation
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
+    from django.contrib.contenttypes.fields import GenericRelation
+else:
+    try:
+        from django.db.models.fields.generic import GenericRelation
+        assert GenericRelation
+    except ImportError:
+        from django.contrib.contenttypes.generic import GenericRelation
 
 
 def parse_file_or_list(arg):
@@ -107,14 +125,17 @@ def get_model_color(app_colors, model):
 
 
 class ModelNotFoundException(Exception):
-    pass
+    def __init__(self, value):
+        self.value = value
 
+    def __str__(self):
+        return repr(self.value)
 
 def find_model_data(obj_ref, model):
     for num, m, data in obj_ref:
         if model == m:
             return data
-    raise ModelNotFoundException
+    raise ModelNotFoundException("No model '%s' in %s" % (repr(model), repr([m for num, m, data in obj_ref])))
 
 
 def field_index(modelrec, field):
@@ -156,6 +177,8 @@ class Command(BaseCommand):
                     help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
         make_option('--exclude-models', '-X', action='store', dest='exclude_models',
                     help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
+        make_option('--exclude-modules', '-M', action='store', dest='exclude_modules',
+                    help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
         make_option('--inheritance', '-e', action='store_true', dest='inheritance',
                     help='Include inheritance arrows'),
         make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
@@ -167,14 +190,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         apps = []
         if options['all_applications']:
-            apps = models.get_apps()
+            apps = list(get_apps())
 
         for app_label in args:
-            app = models.get_app(app_label)
+            app = get_app(app_label)
             if app not in apps:
                 apps.append(app)
 
         self.verbose_names = options['verbose_names']
+        self.exclude_modules = parse_file_or_list(options['exclude_modules'])
         self.exclude_models = parse_file_or_list(options['exclude_models'])
         self.exclude_fields = parse_file_or_list(options['exclude_columns'])
         self.inheritance = options['inheritance']
@@ -207,9 +231,12 @@ class Command(BaseCommand):
 
         for model in model_list:
             for rel in self.get_model_relations(model):
-                self.prepare_relation_stage2(obj_ref, rel, obj_num)
-                self.xml_make_relation(rel)
-                obj_num += 1
+                try:
+                    self.prepare_relation_stage2(obj_ref, rel, obj_num)
+                    self.xml_make_relation(rel)
+                    obj_num += 1
+                except ModelNotFoundException:
+                    pass
             if self.inheritance:
                 for rel in self.get_model_inheritance(model):
                     try:
@@ -352,8 +379,14 @@ class Command(BaseCommand):
         result = []
         for app in apps:
             result.extend(get_app_models_with_abstracts(app))
+
         result = list(set(result))
-        return list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
+        if self.exclude_modules:
+            result = list(filter(lambda model:  model.__module__ not in self.exclude_modules, result))
+        if self.exclude_fields:
+            result = list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
+
+        return result
 
     def prepare_field(self, field):
         return {
@@ -393,14 +426,20 @@ class Command(BaseCommand):
         if isinstance(field.rel.to, six.string_types):
             if field.rel.to == 'self':
                 target_model = field.model
+            elif field.rel.to == 'auth.User':
+                from django.contrib.auth import get_user_model
+                target_model = get_user_model()
+            elif field.rel.to == 'sites.Site':
+                from django.contrib.sites.models import Site
+                target_model = Site
             else:
                 raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
                                 .format(field.model.__name__, field.name))
         else:
             target_model = field.rel.to
 
-        if hasattr(field.rel, 'field_name'):
-            target_field = target_model._meta.get_field(field.rel.field_name)
+        if getattr(field.rel, 'field_name', None):
+                target_field = target_model._meta.get_field(field.rel.field_name)
         else:
             target_field = target_model._meta.pk
 
