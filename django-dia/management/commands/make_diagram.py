@@ -7,35 +7,28 @@ django-extensions application code (graph_models command)
 """
 
 from distutils.version import StrictVersion
-from django import get_version
-DJANGO_VERSION = get_version()
-
 from django.core.management.base import BaseCommand
-from optparse import make_option
 import xml.etree.ElementTree as ET
 import random
 import os
 import six
 import gzip
 from django.template.loader import render_to_string
-from django.db import models
+from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
+
+from django import get_version
+DJANGO_VERSION = get_version()
 
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
+    from django.contrib.contenttypes.fields import GenericRelation
     from django.apps import apps
     get_models = apps.get_models
     get_apps = apps.app_configs.items
     get_app = apps.get_app_config
-
 else:
     from django.db.models import get_models
     from django.db.models import get_apps
     from django.db.models import get_app
-
-from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
-
-if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
-    from django.contrib.contenttypes.fields import GenericRelation
-else:
     try:
         from django.db.models.fields.generic import GenericRelation
         assert GenericRelation
@@ -131,6 +124,7 @@ class ModelNotFoundException(Exception):
     def __str__(self):
         return repr(self.value)
 
+
 def find_model_data(obj_ref, model):
     for num, m, data in obj_ref:
         if model == m:
@@ -152,6 +146,7 @@ def allocate_free_port(modelrec):
         modelrec['port_idx'] = 0
     return result
 
+
 allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 
 # 0 - 1 - 2 - 3 - 4
@@ -163,29 +158,38 @@ allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 # 7 - 8 - 9 -10 -11
 
 
+def _make_options(fn):
+    yield fn('--all-applications', '-a', action='store_true', dest='all_applications',
+             help='Automatically include all applications from INSTALLED_APPS')
+    yield fn('--output', '-o', action='store', dest='outputfile',
+             help='Render output file.'),
+    yield fn('--verbose-names', '-n', action='store_true', dest='verbose_names',
+             help='Use verbose_name of models and fields'),
+    yield fn('--exclude-columns', '-x', action='store', dest='exclude_columns',
+             help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
+    yield fn('--exclude-models', '-X', action='store', dest='exclude_models',
+             help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
+    yield fn('--exclude-modules', '-M', action='store', dest='exclude_modules',
+             help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
+    yield fn('--inheritance', '-e', action='store_true', dest='inheritance',
+             help='Include inheritance arrows'),
+    yield fn('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
+             default=True, help="Do not sort fields"),
+    yield fn('--bezier', action='store_true', dest='bezier',
+             help='Use bezier arrows instead of database relation arrows'),
+
+
 class Command(BaseCommand):
     help = 'Generate .dia diagram of your django project\'s models'
     args = '[appname]'
-    option_list = BaseCommand.option_list + (
-        make_option('--all-applications', '-a', action='store_true', dest='all_applications',
-                    help='Automatically include all applications from INSTALLED_APPS'),
-        make_option('--output', '-o', action='store', dest='outputfile',
-                    help='Render output file.'),
-        make_option('--verbose-names', '-n', action='store_true', dest='verbose_names',
-                    help='Use verbose_name of models and fields'),
-        make_option('--exclude-columns', '-x', action='store', dest='exclude_columns',
-                    help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
-        make_option('--exclude-models', '-X', action='store', dest='exclude_models',
-                    help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
-        make_option('--exclude-modules', '-M', action='store', dest='exclude_modules',
-                    help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
-        make_option('--inheritance', '-e', action='store_true', dest='inheritance',
-                    help='Include inheritance arrows'),
-        make_option('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
-                    default=True, help="Do not sort fields"),
-        make_option('--bezier', action='store_true', dest='bezier',
-                    help='Use bezier arrows instead of database relation arrows'),
-    )
+
+    if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.8'):
+        def add_arguments(self, parser):
+            for _ in _make_options(parser.add_argument):
+                pass
+    else:
+        from optparse import make_option
+        option_list = BaseCommand.option_list + tuple(_make_options(make_option))
 
     def handle(self, *args, **options):
         apps = []
