@@ -17,7 +17,7 @@ if is_register_command(argv[1:]):
 
 setup(
     name='django-dia',
-    version='0.3.1',
+    version='0.3.2',
     description='Generate .dia diagram of your django project\'s models',
     long_description=longdesc,
     url='https://github.com/neumond/django-dia',
@@ -33,6 +33,6 @@ setup(
     ],
     keywords='django dia model diagram',
     packages=['django-dia', 'django-dia.management', 'django-dia.management.commands'],
-    package_data={'django-dia': ['templates/django-dia/empty.xml']},
+    package_data={'django-dia': ['django-dia/management/commands/empty.xml']},
     install_requires=['Django', 'six'],
 )

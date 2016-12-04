@@ -6,19 +6,18 @@ Django model to DOT (Graphviz) converter
 django-extensions application code (graph_models command)
 """
 
-from distutils.version import StrictVersion
-from django.core.management.base import BaseCommand
-import xml.etree.ElementTree as ET
-import random
 import os
-import six
+import random
 import gzip
-from django.template.loader import render_to_string
+from distutils.version import StrictVersion
+
+import six
+import xml.etree.ElementTree as ET
+from django.core.management.base import BaseCommand
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
-
 from django import get_version
-DJANGO_VERSION = get_version()
 
+DJANGO_VERSION = get_version()
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
     from django.contrib.contenttypes.fields import GenericRelation
     from django.apps import apps
@@ -34,6 +33,18 @@ else:
         assert GenericRelation
     except ImportError:
         from django.contrib.contenttypes.generic import GenericRelation
+
+
+_EMPTY_XML = None
+
+
+def get_empty_xml():
+    global _EMPTY_XML
+    if _EMPTY_XML is None:
+        from os.path import abspath, join, dirname
+        with open(join(dirname(abspath(__file__)), 'empty.xml')) as f:
+            _EMPTY_XML = f.read()
+    return _EMPTY_XML
 
 
 def parse_file_or_list(arg):
@@ -158,38 +169,29 @@ allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 # 7 - 8 - 9 -10 -11
 
 
-def _make_options(fn):
-    yield fn('--all-applications', '-a', action='store_true', dest='all_applications',
-             help='Automatically include all applications from INSTALLED_APPS')
-    yield fn('--output', '-o', action='store', dest='outputfile',
-             help='Render output file.'),
-    yield fn('--verbose-names', '-n', action='store_true', dest='verbose_names',
-             help='Use verbose_name of models and fields'),
-    yield fn('--exclude-columns', '-x', action='store', dest='exclude_columns',
-             help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
-    yield fn('--exclude-models', '-X', action='store', dest='exclude_models',
-             help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
-    yield fn('--exclude-modules', '-M', action='store', dest='exclude_modules',
-             help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
-    yield fn('--inheritance', '-e', action='store_true', dest='inheritance',
-             help='Include inheritance arrows'),
-    yield fn('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
-             default=True, help="Do not sort fields"),
-    yield fn('--bezier', action='store_true', dest='bezier',
-             help='Use bezier arrows instead of database relation arrows'),
-
-
 class Command(BaseCommand):
     help = 'Generate .dia diagram of your django project\'s models'
     args = '[appname]'
 
-    if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.8'):
-        def add_arguments(self, parser):
-            for _ in _make_options(parser.add_argument):
-                pass
-    else:
-        from optparse import make_option
-        option_list = BaseCommand.option_list + tuple(_make_options(make_option))
+    def add_arguments(self, parser):
+        parser.add_argument('--all-applications', '-a', action='store_true', dest='all_applications',
+                            help='Automatically include all applications from INSTALLED_APPS')
+        parser.add_argument('--output', '-o', action='store', dest='outputfile',
+                            help='Render output file.'),
+        parser.add_argument('--verbose-names', '-n', action='store_true', dest='verbose_names',
+                            help='Use verbose_name of models and fields'),
+        parser.add_argument('--exclude-columns', '-x', action='store', dest='exclude_columns',
+                            help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
+        parser.add_argument('--exclude-models', '-X', action='store', dest='exclude_models',
+                            help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
+        parser.add_argument('--exclude-modules', '-M', action='store', dest='exclude_modules',
+                            help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
+        parser.add_argument('--inheritance', '-e', action='store_true', dest='inheritance',
+                            help='Include inheritance arrows'),
+        parser.add_argument('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
+                            default=True, help="Do not sort fields"),
+        parser.add_argument('--bezier', action='store_true', dest='bezier',
+                            help='Use bezier arrows instead of database relation arrows'),
 
     def handle(self, *args, **options):
         apps = []
@@ -211,7 +213,7 @@ class Command(BaseCommand):
 
         ET.register_namespace('dia', 'http://www.lysator.liu.se/~alla/dia/')
         ns = {'dia': 'http://www.lysator.liu.se/~alla/dia/'}
-        dom = ET.fromstring(render_to_string('django-dia/empty.xml', {}))
+        dom = ET.fromstring(get_empty_xml())
         self.layer = dom.find('dia:layer', namespaces=ns)
 
         app_colors = {}
