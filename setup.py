@@ -6,7 +6,7 @@ def is_register_command(a):
     for item in a:
         if item.startswith('-'):
             continue
-        return item == 'register'
+        return item in ('register', 'bdist_wheel')
     return False
 
 longdesc = None
@@ -17,7 +17,7 @@ if is_register_command(argv[1:]):
 
 setup(
     name='django-dia',
-    version='0.3',
+    version='0.3.1',
     description='Generate .dia diagram of your django project\'s models',
     long_description=longdesc,
     url='https://github.com/neumond/django-dia',
