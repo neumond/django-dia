@@ -171,9 +171,10 @@ allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 
 class Command(BaseCommand):
     help = 'Generate .dia diagram of your django project\'s models'
-    args = '[appname]'
 
     def add_arguments(self, parser):
+        parser.add_argument('appnames', metavar='appname', nargs='*',
+                            help='Names of particular applications')
         parser.add_argument('--all-applications', '-a', action='store_true', dest='all_applications',
                             help='Automatically include all applications from INSTALLED_APPS')
         parser.add_argument('--output', '-o', action='store', dest='outputfile',
@@ -198,7 +199,7 @@ class Command(BaseCommand):
         if options['all_applications']:
             apps = list(get_apps())
 
-        for app_label in args:
+        for app_label in options['appnames']:
             app = get_app(app_label)
             if app not in apps:
                 apps.append(app)
