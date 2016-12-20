@@ -270,12 +270,10 @@ class Command(BaseCommand):
         end_rec = find_model_data(obj_ref, rel['end_obj'])
         rel['start_obj_id'] = start_rec['id']
         rel['end_obj_id'] = end_rec['id']
-
-        idx = None if 'start_field' not in rel or rel['start_field'].primary_key\
+        idx = None if 'start_field' not in rel or rel['start_field'] is None or rel['start_field'].primary_key \
             else field_index(start_rec, rel['start_field'])
         rel['start_port'] = allocate_free_port(start_rec) if idx is None else 12 + idx * 2
-
-        idx = None if 'end_field' not in rel or rel['end_field'].primary_key\
+        idx = None if 'end_field' not in rel or rel['end_field'] is None or rel['end_field'].primary_key \
             else field_index(end_rec, rel['end_field'])
         rel['end_port'] = allocate_free_port(end_rec) if idx is None else 12 + idx * 2
 
@@ -389,7 +387,7 @@ class Command(BaseCommand):
 
         result = list(set(result))
         if self.exclude_modules:
-            result = list(filter(lambda model:  model.__module__ not in self.exclude_modules, result))
+            result = list(filter(lambda model: model.__module__ not in self.exclude_modules, result))
         if self.exclude_fields:
             result = list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
 
