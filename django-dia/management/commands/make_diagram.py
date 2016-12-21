@@ -76,6 +76,7 @@ def get_model_abstract_fields(model):
 
 def make_dia_attribute(parent, name, atype, value):
     attr = ET.SubElement(parent, 'dia:attribute', attrib={'name': name})
+    value = value.decode('utf-8')
 
     textnode = False
     attribs = None
