@@ -17,7 +17,7 @@ matrix:
     - python: "2.7"
       env: 'DJANGO_VERSION=">=2.0"'
 install:
-  - pip install -q "Django${DJANGO_VERSION}"
-  - pip install -q -e .
+  - pip install "Django${DJANGO_VERSION}"
+  - pip install -e .[tests]
 script:
-  - python django_test_manage.py test django-dia
+  - pytest

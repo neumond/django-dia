@@ -9,6 +9,7 @@ def is_register_command(a):
         return item in ('register', 'bdist_wheel')
     return False
 
+
 longdesc = None
 if is_register_command(argv[1:]):
     with open('README.rst') as f:
@@ -35,4 +36,7 @@ setup(
     packages=['django-dia', 'django-dia.management', 'django-dia.management.commands'],
     package_data={'django-dia.management.commands': ['empty.xml']},
     install_requires=['Django', 'six'],
+    extras_require={
+        'tests': ['pytest', 'pytest-django']
+    }
 )

@@ -17,7 +17,10 @@ from django.core.management.base import BaseCommand
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 from django import get_version
 
+
 DJANGO_VERSION = get_version()
+
+
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
     from django.contrib.contenttypes.fields import GenericRelation
     from django.apps import apps
@@ -33,6 +36,22 @@ else:
         assert GenericRelation
     except ImportError:
         from django.contrib.contenttypes.generic import GenericRelation
+
+
+if StrictVersion(DJANGO_VERSION) >= StrictVersion('2.0'):
+    class RelFieldObject:
+        pass
+
+    def get_related_field(field):
+        # TODO
+        rel = field.remote_field
+        o = RelFieldObject()
+        print(rel.name)
+        o.to = rel.name
+        return o
+else:
+    def get_related_field(field):
+        return field.rel
 
 
 _EMPTY_XML = None
@@ -427,23 +446,25 @@ class Command(BaseCommand):
 
     def prepare_relation(self, field, start_label, end_label, dotted=False):
         # handle self-relationships and lazy-relationships
-        if isinstance(field.rel.to, six.string_types):
-            if field.rel.to == 'self':
+        rel = get_related_field(field)
+
+        if isinstance(rel.to, six.string_types):
+            if rel.to == 'self':
                 target_model = field.model
-            elif field.rel.to == 'auth.User':
+            elif rel.to == 'auth.User':
                 from django.contrib.auth import get_user_model
                 target_model = get_user_model()
-            elif field.rel.to == 'sites.Site':
+            elif rel.to == 'sites.Site':
                 from django.contrib.sites.models import Site
                 target_model = Site
             else:
                 raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
                                 .format(field.model.__name__, field.name))
         else:
-            target_model = field.rel.to
+            target_model = rel.to
 
-        if getattr(field.rel, 'field_name', None):
-                target_field = target_model._meta.get_field(field.rel.field_name)
+        if getattr(rel, 'field_name', None):
+            target_field = target_model._meta.get_field(rel.field_name)
         else:
             target_field = target_model._meta.pk
 
@@ -489,8 +510,9 @@ class Command(BaseCommand):
             if self.get_field_name(field) in self.exclude_fields:
                 continue
             if isinstance(field, ManyToManyField):
+                rel = get_related_field(field)
                 if (getattr(field, 'creates_table', False) or  # django 1.1.
-                   (hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created)):  # django 1.2
+                   (hasattr(rel.through, '_meta') and rel.through._meta.auto_created)):  # django 1.2
                     result.append(self.prepare_relation(field, 'n', 'n'))
             elif isinstance(field, GenericRelation):
                 result.append(self.prepare_relation(field, 'n', 'n', dotted=True))
