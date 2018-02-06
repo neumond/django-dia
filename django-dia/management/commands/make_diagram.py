@@ -41,9 +41,8 @@ _EMPTY_XML = None
 def get_empty_xml():
     global _EMPTY_XML
     if _EMPTY_XML is None:
-        from os.path import abspath, join, dirname
-        with open(join(dirname(abspath(__file__)), 'empty.xml')) as f:
-            _EMPTY_XML = f.read()
+        import pkgutil
+        _EMPTY_XML = pkgutil.get_data(__package__, 'empty.xml')
     return _EMPTY_XML
 
 
