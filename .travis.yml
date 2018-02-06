@@ -3,10 +3,19 @@ python:
   - "2.7"
   - "3.4"
   - "3.5"
+  - "3.6"
 env:
-  - DJANGO_VERSION=">=1.8,<1.9"
-  - DJANGO_VERSION=">=1.9,<1.10"
-  - DJANGO_VERSION=">=1.10"
+  # https://www.djangoproject.com/download/
+  - 'DJANGO_VERSION=">=1.8,<1.9"'
+  - 'DJANGO_VERSION=">=1.11,<1.12"'
+  - 'DJANGO_VERSION=">=2.0"'
+matrix:
+  # https://docs.djangoproject.com/en/dev/faq/install/#what-python-version-can-i-use-with-django
+  exclude:
+    - python: "3.6"
+      env: 'DJANGO_VERSION=">=1.8,<1.9"'
+    - python: "2.7"
+      env: 'DJANGO_VERSION=">=2.0"'
 install:
   - pip install -q "Django${DJANGO_VERSION}"
   - pip install -q -e .
