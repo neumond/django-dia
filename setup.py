@@ -37,6 +37,6 @@ setup(
     package_data={'django-dia.management.commands': ['empty.xml']},
     install_requires=['Django', 'six'],
     extras_require={
-        'tests': ['pytest', 'pytest-django']
+        'tests': ['pytest', 'pytest-django', 'pytest-pythonpath']
     }
 )

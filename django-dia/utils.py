@@ -192,13 +192,13 @@ def prepare_m2m_through_relation(m2m_field):
     a.update({
         'start_obj': through,
         'end_obj': m2m_field.model,
-        'start_field': None,
+        'start_field': None,  # TODO:
         'end_field': get_model_pk_field(m2m_field.model),
     })
     b.update({
         'start_obj': through,
         'end_obj': m2m_field.related_model,
-        'start_field': None,
+        'start_field': None,  # TODO:
         'end_field': get_model_pk_field(m2m_field.related_model),
     })
     return [a, b]
