@@ -10,6 +10,8 @@ import os
 import random
 import gzip
 from importlib import import_module
+import pkgutil
+from functools import lru_cache
 
 import six
 import xml.etree.ElementTree as ET
@@ -25,15 +27,9 @@ get_apps = utils.get_apps
 get_app = utils.get_app
 
 
-_EMPTY_XML = None
-
-
+@lru_cache(maxsize=1)
 def get_empty_xml():
-    global _EMPTY_XML
-    if _EMPTY_XML is None:
-        import pkgutil
-        _EMPTY_XML = pkgutil.get_data(__package__, 'empty.xml')
-    return _EMPTY_XML
+    return pkgutil.get_data(__package__, 'empty.xml')
 
 
 def parse_file_or_list(arg):
