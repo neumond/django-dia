@@ -15,7 +15,6 @@ from importlib import import_module
 import six
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
-from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 from django import get_version
 
 utils = import_module('django-dia.utils')
@@ -23,6 +22,9 @@ get_full_model_list = utils.get_full_model_list
 get_model_name = utils.get_model_name
 get_model_abstract_fields = utils.get_model_abstract_fields
 prepare_field = utils.prepare_field_old
+get_model_relations = utils.prepare_model_relations
+get_model_fields = utils.prepare_model_fields
+get_model_inheritance = utils.prepare_model_inheritance
 
 
 DJANGO_VERSION = get_version()
@@ -148,10 +150,10 @@ def find_model_data(obj_ref, model):
 
 
 def field_index(modelrec, field):
-    for i, f in enumerate(modelrec['fields']):
-        if field == f['field']:
+    for i, frec in enumerate(modelrec['fields']):
+        if frec['name'] == field.name:
             return i
-    return None  # ManyToManyFields
+    return None
 
 
 def allocate_free_port(modelrec):
@@ -236,7 +238,7 @@ class Command(BaseCommand):
                 'id': obj_num,
                 'pos': (random.random() * 80, random.random() * 80),
                 'name': get_model_name(model),
-                'fields': self.get_model_fields(model),
+                'fields': get_model_fields(model),
                 'color': get_model_color(app_colors, model),
                 'port_idx': 0,
             }
@@ -245,7 +247,7 @@ class Command(BaseCommand):
             obj_num += 1
 
         for model in model_list:
-            for rel in self.get_model_relations(model):
+            for rel in get_model_relations(model):
                 try:
                     self.prepare_relation_stage2(obj_ref, rel, obj_num)
                     self.xml_make_relation(rel)
@@ -253,7 +255,7 @@ class Command(BaseCommand):
                 except ModelNotFoundException:
                     pass
             if self.inheritance:
-                for rel in self.get_model_inheritance(model):
+                for rel in get_model_inheritance(model):
                     try:
                         self.prepare_relation_stage2(obj_ref, rel, obj_num)
                         self.xml_make_relation(rel)
@@ -381,127 +383,3 @@ class Command(BaseCommand):
         make_dia_attribute(rel, 'end_arrow_width', 'real', 0.25)
         make_dia_attribute(rel, 'line_colour', 'color', data['color'])
         make_dia_attribute(rel, 'line_width', 'real', 0.1)
-
-    def get_field_name(self, field):
-        # TODO: remove
-        return field.verbose_name if self.verbose_names and field.verbose_name else field.name
-
-    def get_model_fields(self, appmodel):
-        # TODO: remove
-        result = []
-
-        fields = appmodel._meta.local_fields
-
-        # find primary key and print it first, ignoring implicit id if other pk exists
-        pk = appmodel._meta.pk
-        if pk and pk in fields and not appmodel._meta.abstract:
-            result.append(prepare_field(pk))
-
-        for field in fields:
-            if self.get_field_name(field) in self.exclude_fields:
-                continue
-            if pk and field == pk:
-                continue
-            result.append(prepare_field(field))
-
-        if self.sort_fields:
-            result = sorted(result, key=lambda field: (not field['primary_key'], field['name']))
-
-        return result
-
-    def prepare_relation(self, field, start_label, end_label, dotted=False):
-        # handle self-relationships and lazy-relationships
-        rel = get_related_field(field)
-
-        if isinstance(rel.to, six.string_types):
-            if rel.to == 'self':
-                target_model = field.model
-            elif rel.to == 'auth.User':
-                from django.contrib.auth import get_user_model
-                target_model = get_user_model()
-            elif rel.to == 'sites.Site':
-                from django.contrib.sites.models import Site
-                target_model = Site
-            else:
-                raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
-                                .format(field.model.__name__, field.name))
-        else:
-            target_model = rel.to
-
-        if getattr(rel, 'field_name', None):
-            target_field = target_model._meta.get_field(rel.field_name)
-        else:
-            target_field = target_model._meta.pk
-
-        if get_model_name(target_model) in self.exclude_models:
-            return
-
-        color = '000000'
-        if start_label == '1' and end_label == '1':
-            color = 'E2A639'
-        if start_label == 'n' and end_label == 'n':
-            color = '75A908'
-
-        return {
-            'start_label': start_label,
-            'end_label': end_label,
-            'start_obj': field.model,
-            'end_obj': target_model,
-            'start_field': field,
-            'end_field': target_field,
-            'dotted': dotted,
-            'directional': start_label != end_label,
-            'color': color,
-        }
-
-    def get_model_relations(self, appmodel):
-        result = []
-        abstract_fields = get_model_abstract_fields(appmodel)
-
-        for field in appmodel._meta.local_fields:
-            if field.attname.endswith('_ptr_id'):  # excluding field redundant with inheritance relation
-                continue
-            if field in abstract_fields:
-                # excluding fields inherited from abstract classes. they duplicate as local_fields
-                continue
-            if self.get_field_name(field) in self.exclude_fields:
-                continue
-            if isinstance(field, OneToOneField):
-                result.append(self.prepare_relation(field, '1', '1'))
-            elif isinstance(field, ForeignKey):
-                result.append(self.prepare_relation(field, '1', 'n'))
-
-        for field in appmodel._meta.local_many_to_many:
-            if self.get_field_name(field) in self.exclude_fields:
-                continue
-            if isinstance(field, ManyToManyField):
-                rel = get_related_field(field)
-                if (getattr(field, 'creates_table', False) or  # django 1.1.
-                   (hasattr(rel.through, '_meta') and rel.through._meta.auto_created)):  # django 1.2
-                    result.append(self.prepare_relation(field, 'n', 'n'))
-            elif isinstance(field, GenericRelation):
-                result.append(self.prepare_relation(field, 'n', 'n', dotted=True))
-
-        return [rel for rel in result if rel is not None]
-
-    def get_model_inheritance(self, model):
-        result = []
-        for parent in model.__bases__:
-            if hasattr(parent, '_meta'):  # parent is a model
-                l = 'multi-table'
-                if parent._meta.abstract:
-                    l = 'abstract'
-                if model._meta.proxy:
-                    l = 'proxy'
-                result.append({
-                    'start_label': '',
-                    'end_label': l,
-                    'start_obj': model,
-                    'end_obj': parent,
-                    'dotted': True,
-                    'directional': True,
-                    'color': '000000',
-                })
-        return result
-        # TODO: seems as if abstract models aren't part of models.getModels,
-        # which is why they are printed by this without any attributes.

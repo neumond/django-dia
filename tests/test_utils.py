@@ -222,7 +222,7 @@ def test_relations_n_n_through():
             'end_label': '1',
             'start_obj': anyapp_models.Like,
             'end_obj': anyapp_models.Poster,
-            'start_field': None,
+            'start_field': None,  # TODO: autocreated field
             'end_field': utils.get_model_pk_field(anyapp_models.Poster),
             'color': AnyValue(),
             'dotted': False,
@@ -233,7 +233,7 @@ def test_relations_n_n_through():
             'end_label': '1',
             'start_obj': anyapp_models.Like,
             'end_obj': anyapp_models.Picture,
-            'start_field': None,
+            'start_field': None,  # TODO: autocreated field
             'end_field': utils.get_model_pk_field(anyapp_models.Picture),
             'color': AnyValue(),
             'dotted': False,

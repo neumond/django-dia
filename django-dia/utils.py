@@ -1,6 +1,5 @@
 from distutils.version import StrictVersion
 
-import six
 from django import get_version as django_version
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 
@@ -125,10 +124,9 @@ def prepare_field(field):
 def prepare_model_fields(model):
     result = []
 
-    # find primary key and print it first, ignoring implicit id if other pk exists
+    # find primary key and print it first
     pk = get_model_pk_field(model)
     if pk is not None:
-        assert not is_model_abstract(model)
         result.append(prepare_field(pk))
 
     for field in get_model_local_fields(model):
@@ -242,3 +240,26 @@ def prepare_model_relations(model):
             raise ValueError('Wrong m2m relation field class: {}'.format(field))
 
     return [rel for rel in result if rel is not None]
+
+
+def prepare_model_inheritance(model):
+    result = []
+    for parent in model.__bases__:
+        if hasattr(parent, '_meta'):  # parent is a model
+            l = 'multi-table'
+            if parent._meta.abstract:
+                l = 'abstract'
+            if model._meta.proxy:
+                l = 'proxy'
+            result.append({
+                'start_label': '',
+                'end_label': l,
+                'start_obj': model,
+                'end_obj': parent,
+                'dotted': True,
+                'directional': True,
+                'color': '000000',
+            })
+    return result
+    # TODO: seems as if abstract models aren't part of models.getModels,
+    # which is why they are printed by this without any attributes.
