@@ -88,10 +88,6 @@ def does_m2m_auto_create_table(m2m):
     return False
 
 
-def get_related_field(field):
-    return field.rel
-
-
 def get_field_name(field, verbose=False):
     # TODO: need this function?
     return field.verbose_name if verbose and field.verbose_name else field.name
@@ -144,28 +140,9 @@ def prepare_model_fields(model):
 
 
 def prepare_relation(field, start_label, end_label, dotted=False):
-    # handle self-relationships and lazy-relationships
-    rel = get_related_field(field)
+    # TODO: handle lazy-relationships
 
-    if isinstance(rel.to, six.string_types):
-        if rel.to == 'self':
-            target_model = field.model
-        elif rel.to == 'auth.User':  # TODO: need this?
-            from django.contrib.auth import get_user_model
-            target_model = get_user_model()
-        elif rel.to == 'sites.Site':  # TODO: need this?
-            from django.contrib.sites.models import Site
-            target_model = Site
-        else:
-            raise Exception('Lazy relationship for model ({}) must be explicit for field ({})'
-                            .format(field.model.__name__, field.name))
-    else:
-        target_model = rel.to
-
-    if getattr(rel, 'field_name', None):
-        target_field = target_model._meta.get_field(rel.field_name)
-    else:
-        target_field = target_model._meta.pk
+    assert field.is_relation
 
     # TODO: exclude models
     # if get_model_name(target_model) in self.exclude_models:
@@ -181,9 +158,9 @@ def prepare_relation(field, start_label, end_label, dotted=False):
         'start_label': start_label,
         'end_label': end_label,
         'start_obj': field.model,
-        'end_obj': target_model,
+        'end_obj': field.target_field.model,
         'start_field': field,
-        'end_field': target_field,
+        'end_field': field.target_field,
         'dotted': dotted,
         'directional': start_label != end_label,
         'color': color,
