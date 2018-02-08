@@ -9,13 +9,11 @@ django-extensions application code (graph_models command)
 import os
 import random
 import gzip
-from distutils.version import StrictVersion
 from importlib import import_module
 
 import six
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
-from django import get_version
 
 utils = import_module('django-dia.utils')
 get_full_model_list = utils.get_full_model_list
@@ -25,34 +23,8 @@ prepare_field = utils.prepare_field_old
 get_model_relations = utils.prepare_model_relations
 get_model_fields = utils.prepare_model_fields
 get_model_inheritance = utils.prepare_model_inheritance
-
-
-DJANGO_VERSION = get_version()
-
-
-if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
-    from django.apps import apps
-    get_apps = apps.app_configs.items
-    get_app = apps.get_app_config
-else:
-    from django.db.models import get_apps
-    from django.db.models import get_app
-
-
-if StrictVersion(DJANGO_VERSION) >= StrictVersion('2.0'):
-    class RelFieldObject:
-        pass
-
-    def get_related_field(field):
-        # TODO
-        rel = field.remote_field
-        o = RelFieldObject()
-        print(rel.name)
-        o.to = rel.name
-        return o
-else:
-    def get_related_field(field):
-        return field.rel
+get_apps = utils.get_apps
+get_app = utils.get_app
 
 
 _EMPTY_XML = None
