@@ -54,14 +54,6 @@ def test_get_model_pk_field():
     assert f(anyapp_models.AbstractShape) is None
 
 
-def test_get_field_name():
-    f = utils.get_model_local_fields
-    names = [utils.get_field_name(field) for field in f(anyapp_models.Person)]
-    assert names == ['id', 'first_name', 'last_name']
-    names = [utils.get_field_name(field, verbose=True) for field in f(anyapp_models.Person)]
-    assert names[1] == 'First name of a person'
-
-
 class AnyValue:
     def __eq__(self, other):
         return True
@@ -344,3 +336,6 @@ def test_prepare_model_inheritance():
             'color': AnyValue(),
         }
     ]
+
+    data = f(anyapp_models.Engine)
+    assert data == []

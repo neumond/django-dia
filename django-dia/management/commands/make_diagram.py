@@ -18,8 +18,6 @@ from django.core.management.base import BaseCommand
 utils = import_module('django-dia.utils')
 get_full_model_list = utils.get_full_model_list
 get_model_name = utils.get_model_name
-get_model_abstract_fields = utils.get_model_abstract_fields
-prepare_field = utils.prepare_field_old
 get_model_relations = utils.prepare_model_relations
 get_model_fields = utils.prepare_model_fields
 get_model_inheritance = utils.prepare_model_inheritance
@@ -92,11 +90,11 @@ def get_rand_color():
 
 
 def get_model_color(app_colors, model):
-    l = model._meta.app_label
-    if l in app_colors:
-        return app_colors[l]
+    label = model._meta.app_label
+    if label in app_colors:
+        return app_colors[label]
     newcolor = get_rand_color()
-    app_colors[l] = newcolor
+    app_colors[label] = newcolor
     return newcolor
 
 

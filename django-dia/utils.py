@@ -92,24 +92,6 @@ def does_m2m_auto_create_table(m2m_field):
     return False
 
 
-def get_field_name(field, verbose=False):
-    # TODO: need this function?
-    return field.verbose_name if verbose and field.verbose_name else field.name
-
-
-def prepare_field_old(field):
-    # TODO: remove
-    return {
-        'field': field,  # TODO: remove
-        'name': field.name,
-        'type': type(field).__name__,
-        'comment': field.verbose_name,  # TODO: comment?
-        'primary_key': field.primary_key,
-        'nullable': field.null,
-        'unique': field.unique,
-    }
-
-
 def prepare_field(field):
     return {
         'name': field.name,
@@ -246,14 +228,14 @@ def prepare_model_inheritance(model):
     result = []
     for parent in model.__bases__:
         if hasattr(parent, '_meta'):  # parent is a model
-            l = 'multi-table'
+            label = 'multi-table'
             if parent._meta.abstract:
-                l = 'abstract'
+                label = 'abstract'
             if model._meta.proxy:
-                l = 'proxy'
+                label = 'proxy'
             result.append({
                 'start_label': '',
-                'end_label': l,
+                'end_label': label,
                 'start_obj': model,
                 'end_obj': parent,
                 'dotted': True,
@@ -261,5 +243,14 @@ def prepare_model_inheritance(model):
                 'color': '000000',
             })
     return result
-    # TODO: seems as if abstract models aren't part of models.getModels,
-    # which is why they are printed by this without any attributes.
+
+
+__all__ = (
+    prepare_model_inheritance,
+    prepare_model_relations,
+    prepare_model_fields,
+    get_model_name,
+    get_full_model_list,
+    get_apps,
+    get_app,
+)
