@@ -95,6 +95,28 @@ class Poster(models.Model):
     likes = models.ManyToManyField(Picture, through=Like)
 
 
+# n:n relation with intermediate model with specified field
+
+
+class Picture2(models.Model):
+    url = models.CharField(max_length=100)
+
+
+class Poster2(models.Model):
+    name = models.CharField(max_length=100)
+    likes = models.ManyToManyField(
+        Picture2,
+        through='Like2',
+        through_fields=('poster', 'picture'),
+    )
+
+
+class Like2(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    picture = models.ForeignKey(Picture2, on_delete=models.CASCADE)
+    poster = models.ForeignKey(Poster2, on_delete=models.CASCADE)
+
+
 # self referencing
 
 

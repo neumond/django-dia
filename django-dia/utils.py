@@ -79,10 +79,15 @@ def get_model_m2m_fields(model):
     return model._meta.local_many_to_many
 
 
-def does_m2m_auto_create_table(m2m):
-    if getattr(m2m, 'creates_table', False):  # django 1.1, TODO: remove?
+def get_m2m_through_model(m2m_field):
+    return m2m_field.rel.through
+
+
+def does_m2m_auto_create_table(m2m_field):
+    # TODO: improve
+    if getattr(m2m_field, 'creates_table', False):  # django 1.1, TODO: remove?
         return True
-    through = m2m.rel.through
+    through = get_m2m_through_model(m2m_field)
     if hasattr(through, '_meta') and through._meta.auto_created:  # django 1.2
         return True
     return False
@@ -139,15 +144,7 @@ def prepare_model_fields(model):
     return result
 
 
-def prepare_relation(field, start_label, end_label, dotted=False):
-    # TODO: handle lazy-relationships
-
-    assert field.is_relation
-
-    # TODO: exclude models
-    # if get_model_name(target_model) in self.exclude_models:
-    #     return
-
+def get_relation_base(start_label, end_label, dotted=False):
     color = '000000'
     if start_label == '1' and end_label == '1':
         color = 'E2A639'  # TODO: themes
@@ -157,14 +154,54 @@ def prepare_relation(field, start_label, end_label, dotted=False):
     return {
         'start_label': start_label,
         'end_label': end_label,
-        'start_obj': field.model,
-        'end_obj': field.target_field.model,
-        'start_field': field,
-        'end_field': field.target_field,
         'dotted': dotted,
         'directional': start_label != end_label,
         'color': color,
     }
+
+
+def prepare_relation(field, start_label, end_label, dotted=False):
+    # TODO: handle lazy-relationships
+
+    assert field.is_relation
+
+    # TODO: exclude models
+    # if get_model_name(target_model) in self.exclude_models:
+    #     return
+
+    r = get_relation_base(start_label, end_label, dotted=dotted)
+    r.update({
+        'start_obj': field.model,
+        'end_obj': field.related_model,
+        'start_field': field,
+        'end_field': field.target_field,
+    })
+    return r
+
+
+def prepare_m2m_through_relation(m2m_field):
+    assert m2m_field.is_relation
+    a = get_relation_base('n', '1')
+    b = get_relation_base('n', '1')
+    through = m2m_field.rel.through
+
+    if m2m_field.rel.through_fields is not None:
+        # specific fields already create relationships
+        return []
+
+    a.update({
+        'start_obj': through,
+        'end_obj': m2m_field.model,
+        'start_field': None,
+        'end_field': get_model_pk_field(m2m_field.model),
+    })
+    b.update({
+        'start_obj': through,
+        'end_obj': m2m_field.related_model,
+        'start_field': None,
+        'end_field': get_model_pk_field(m2m_field.related_model),
+    })
+    return [a, b]
 
 
 def prepare_model_relations(model):
@@ -198,7 +235,7 @@ def prepare_model_relations(model):
             if does_m2m_auto_create_table(field):
                 result.append(prepare_relation(field, 'n', 'n'))
             else:
-                pass   # TODO
+                result.extend(prepare_m2m_through_relation(field))
         elif isinstance(field, GenericRelation):
             result.append(prepare_relation(field, 'n', 'n', dotted=True))
         else:

@@ -244,3 +244,41 @@ def test_relations_n_n_through():
     assert data == []
     data = utils.prepare_model_relations(anyapp_models.Like)
     assert data == []
+
+
+def test_relations_n_n_through_specific_fields():
+    assert len(utils.get_model_m2m_fields(anyapp_models.Picture2)) == 0
+    assert len(utils.get_model_m2m_fields(anyapp_models.Poster2)) == 1
+    assert len(utils.get_model_m2m_fields(anyapp_models.Like2)) == 0
+    # pk, picture, poster, created_at
+    assert len(utils.prepare_model_fields(anyapp_models.Like2)) == 4
+
+    data = utils.prepare_model_relations(anyapp_models.Poster2)
+    assert data == []
+    data = utils.prepare_model_relations(anyapp_models.Picture2)
+    assert data == []
+    data = utils.prepare_model_relations(anyapp_models.Like2)
+    assert data == [
+        {
+            'start_label': 'n',
+            'end_label': '1',
+            'start_obj': anyapp_models.Like2,
+            'end_obj': anyapp_models.Picture2,
+            'start_field': utils.get_model_field_by_name(anyapp_models.Like2, 'picture'),
+            'end_field': utils.get_model_pk_field(anyapp_models.Picture2),
+            'color': AnyValue(),
+            'dotted': False,
+            'directional': True,
+        },
+        {
+            'start_label': 'n',
+            'end_label': '1',
+            'start_obj': anyapp_models.Like2,
+            'end_obj': anyapp_models.Poster2,
+            'start_field': utils.get_model_field_by_name(anyapp_models.Like2, 'poster'),
+            'end_field': utils.get_model_pk_field(anyapp_models.Poster2),
+            'color': AnyValue(),
+            'dotted': False,
+            'directional': True,
+        },
+    ]
