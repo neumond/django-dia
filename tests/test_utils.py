@@ -153,8 +153,8 @@ def test_relations_1_1():
 
 
 def test_relations_n_n():
-    assert len(utils.get_model_m2m_relations(anyapp_models.Speaker)) == 1
-    assert len(utils.get_model_m2m_relations(anyapp_models.Language)) == 0
+    assert len(utils.get_model_m2m_fields(anyapp_models.Speaker)) == 1
+    assert len(utils.get_model_m2m_fields(anyapp_models.Language)) == 0
 
     data = utils.prepare_model_relations(anyapp_models.Speaker)
     assert data == [
@@ -163,7 +163,7 @@ def test_relations_n_n():
             'end_label': 'n',
             'start_obj': anyapp_models.Speaker,
             'end_obj': anyapp_models.Language,
-            'start_field': utils.get_model_m2m_by_name(anyapp_models.Speaker, 'language'),
+            'start_field': utils.get_model_field_by_name(anyapp_models.Speaker, 'language'),
             'end_field': utils.get_model_pk_field(anyapp_models.Language),
             'color': AnyValue(),
             'dotted': False,
@@ -200,7 +200,7 @@ def test_self_referencing_n_n():
             'end_label': 'n',
             'start_obj': anyapp_models.Friend,
             'end_obj': anyapp_models.Friend,
-            'start_field': utils.get_model_m2m_by_name(anyapp_models.Friend, 'friends'),
+            'start_field': utils.get_model_field_by_name(anyapp_models.Friend, 'friends'),
             'end_field': utils.get_model_pk_field(anyapp_models.Friend),
             'color': AnyValue(),
             'dotted': False,
@@ -210,9 +210,9 @@ def test_self_referencing_n_n():
 
 
 def test_relations_n_n_through():
-    assert len(utils.get_model_m2m_relations(anyapp_models.Picture)) == 0
-    assert len(utils.get_model_m2m_relations(anyapp_models.Poster)) == 1
-    assert len(utils.get_model_m2m_relations(anyapp_models.Like)) == 0
+    assert len(utils.get_model_m2m_fields(anyapp_models.Picture)) == 0
+    assert len(utils.get_model_m2m_fields(anyapp_models.Poster)) == 1
+    assert len(utils.get_model_m2m_fields(anyapp_models.Like)) == 0
     assert len(utils.prepare_model_fields(anyapp_models.Like)) == 2  # pk, created_at
 
     data = utils.prepare_model_relations(anyapp_models.Poster)

@@ -59,10 +59,7 @@ def get_model_pk_field(model):
 
 
 def get_model_field_by_name(model, fname):
-    for field in get_model_local_fields(model):
-        if field.name == fname:
-            return field
-    raise KeyError('Model {} has no field named {}'.format(model, fname))
+    return model._meta.get_field(fname)
 
 
 def is_model_abstract(model):
@@ -78,15 +75,8 @@ def get_model_abstract_fields(model):
     return result
 
 
-def get_model_m2m_relations(model):
+def get_model_m2m_fields(model):
     return model._meta.local_many_to_many
-
-
-def get_model_m2m_by_name(model, fname):
-    for m2m in get_model_m2m_relations(model):
-        if m2m.name == fname:
-            return m2m
-    raise KeyError('Model {} has no m2m relation named {}'.format(model, fname))
 
 
 def does_m2m_auto_create_table(m2m):
@@ -222,7 +212,7 @@ def prepare_model_relations(model):
             result.append(prepare_relation(field, 'n', '1'))
         # otherwise it's an usual field, skipping it
 
-    for field in get_model_m2m_relations(model):
+    for field in get_model_m2m_fields(model):
         # TODO: exclude fields
         # if self.get_field_name(field) in self.exclude_fields:
         #     continue
