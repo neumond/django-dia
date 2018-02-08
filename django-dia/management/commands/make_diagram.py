@@ -31,18 +31,12 @@ DJANGO_VERSION = get_version()
 
 
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
-    from django.contrib.contenttypes.fields import GenericRelation
     from django.apps import apps
     get_apps = apps.app_configs.items
     get_app = apps.get_app_config
 else:
     from django.db.models import get_apps
     from django.db.models import get_app
-    try:
-        from django.db.models.fields.generic import GenericRelation
-        assert GenericRelation
-    except ImportError:
-        from django.contrib.contenttypes.generic import GenericRelation
 
 
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('2.0'):

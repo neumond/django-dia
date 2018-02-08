@@ -282,3 +282,22 @@ def test_relations_n_n_through_specific_fields():
             'directional': True,
         },
     ]
+
+
+def test_relation_from_abstract_model():
+    data = utils.prepare_model_relations(anyapp_models.AbstractGoods)
+    assert data == [
+        {
+            'start_label': 'n',
+            'end_label': '1',
+            'start_obj': anyapp_models.AbstractGoods,
+            'end_obj': anyapp_models.Shop,
+            'start_field': utils.get_model_field_by_name(anyapp_models.AbstractGoods, 'shop'),
+            'end_field': utils.get_model_pk_field(anyapp_models.Shop),
+            'color': AnyValue(),
+            'dotted': False,
+            'directional': True,
+        }
+    ]
+    data = utils.prepare_model_relations(anyapp_models.GroceryGoods)
+    assert data == []

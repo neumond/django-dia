@@ -127,3 +127,21 @@ class Category(models.Model):
 
 class Friend(models.Model):
     friends = models.ManyToManyField('self')
+
+
+# relation from abstract model
+
+
+class Shop(models.Model):
+    name = models.CharField(max_length=100)
+
+
+class AbstractGoods(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+
+
+class GroceryGoods(AbstractGoods):
+    weight = models.FloatField()
