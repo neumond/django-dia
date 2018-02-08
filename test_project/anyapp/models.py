@@ -50,7 +50,7 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey(Post)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
     content = models.TextField()
 
 
@@ -64,7 +64,7 @@ class Automobile(models.Model):
 
 class Engine(models.Model):
     model = models.CharField(max_length=100)
-    automobile = models.OneToOneField(Automobile)
+    automobile = models.OneToOneField(Automobile, on_delete=models.CASCADE)
 
 
 # n:n relation
@@ -121,7 +121,7 @@ class Like2(models.Model):
 
 
 class Category(models.Model):
-    parent = models.ForeignKey('self', null=True)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
 
