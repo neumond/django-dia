@@ -89,6 +89,15 @@ def get_model_m2m_by_name(model, fname):
     raise KeyError('Model {} has no m2m relation named {}'.format(model, fname))
 
 
+def does_m2m_auto_create_table(m2m):
+    if getattr(m2m, 'creates_table', False):  # django 1.1, TODO: remove?
+        return True
+    through = m2m.rel.through
+    if hasattr(through, '_meta') and through._meta.auto_created:  # django 1.2
+        return True
+    return False
+
+
 def get_related_field(field):
     return field.rel
 
@@ -151,10 +160,10 @@ def prepare_relation(field, start_label, end_label, dotted=False):
     if isinstance(rel.to, six.string_types):
         if rel.to == 'self':
             target_model = field.model
-        elif rel.to == 'auth.User':
+        elif rel.to == 'auth.User':  # TODO: need this?
             from django.contrib.auth import get_user_model
             target_model = get_user_model()
-        elif rel.to == 'sites.Site':
+        elif rel.to == 'sites.Site':  # TODO: need this?
             from django.contrib.sites.models import Site
             target_model = Site
         else:
@@ -219,10 +228,10 @@ def prepare_model_relations(model):
         #     continue
 
         if isinstance(field, ManyToManyField):
-            rel = get_related_field(field)
-            if (getattr(field, 'creates_table', False) or  # django 1.1.
-               (hasattr(rel.through, '_meta') and rel.through._meta.auto_created)):  # django 1.2
+            if does_m2m_auto_create_table(field):
                 result.append(prepare_relation(field, 'n', 'n'))
+            else:
+                pass   # TODO
         elif isinstance(field, GenericRelation):
             result.append(prepare_relation(field, 'n', 'n', dotted=True))
         else:

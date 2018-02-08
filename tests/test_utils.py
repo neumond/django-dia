@@ -17,12 +17,15 @@ def test_get_model_name(django_user_model):
 
 
 def test_get_app_models_with_abstracts(anyapp):
-    models = utils.get_app_models_with_abstracts(anyapp)
-    assert len(models) >= 4
-    assert anyapp_models.Person in models
-    assert anyapp_models.Square in models
+    # usual django mechanism
+    models = utils.get_models(anyapp)
     assert anyapp_models.Circle in models
-    assert anyapp_models.AbstractShape in models
+    assert anyapp_models.AbstractShape not in models
+
+    modelswa = utils.get_app_models_with_abstracts(anyapp)
+    assert len(modelswa) > len(models)
+    assert anyapp_models.Circle in modelswa
+    assert anyapp_models.AbstractShape in modelswa
 
 
 def test_get_model_abstract_fields():
@@ -150,8 +153,6 @@ def test_relations_1_1():
 
 
 def test_relations_n_n():
-    # TODO: transform into separate table?
-
     assert len(utils.get_model_m2m_relations(anyapp_models.Speaker)) == 1
     assert len(utils.get_model_m2m_relations(anyapp_models.Language)) == 0
 
@@ -206,3 +207,40 @@ def test_self_referencing_n_n():
             'directional': False,
         }
     ]
+
+
+def test_relations_n_n_through():
+    assert len(utils.get_model_m2m_relations(anyapp_models.Picture)) == 0
+    assert len(utils.get_model_m2m_relations(anyapp_models.Poster)) == 1
+    assert len(utils.get_model_m2m_relations(anyapp_models.Like)) == 0
+    assert len(utils.prepare_model_fields(anyapp_models.Like)) == 2  # pk, created_at
+
+    data = utils.prepare_model_relations(anyapp_models.Poster)
+    assert data == [
+        {
+            'start_label': 'n',
+            'end_label': '1',
+            'start_obj': anyapp_models.Like,
+            'end_obj': anyapp_models.Poster,
+            'start_field': None,
+            'end_field': utils.get_model_pk_field(anyapp_models.Poster),
+            'color': AnyValue(),
+            'dotted': False,
+            'directional': True,
+        },
+        {
+            'start_label': 'n',
+            'end_label': '1',
+            'start_obj': anyapp_models.Like,
+            'end_obj': anyapp_models.Picture,
+            'start_field': None,
+            'end_field': utils.get_model_pk_field(anyapp_models.Picture),
+            'color': AnyValue(),
+            'dotted': False,
+            'directional': True,
+        },
+    ]
+    data = utils.prepare_model_relations(anyapp_models.Picture)
+    assert data == []
+    data = utils.prepare_model_relations(anyapp_models.Like)
+    assert data == []
