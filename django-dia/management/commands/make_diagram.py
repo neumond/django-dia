@@ -22,7 +22,7 @@ utils = import_module('django-dia.utils')
 get_full_model_list = utils.get_full_model_list
 get_model_name = utils.get_model_name
 get_model_abstract_fields = utils.get_model_abstract_fields
-prepare_field = utils.prepare_field
+prepare_field = utils.prepare_field_old
 
 
 DJANGO_VERSION = get_version()
@@ -383,9 +383,11 @@ class Command(BaseCommand):
         make_dia_attribute(rel, 'line_width', 'real', 0.1)
 
     def get_field_name(self, field):
+        # TODO: remove
         return field.verbose_name if self.verbose_names and field.verbose_name else field.name
 
     def get_model_fields(self, appmodel):
+        # TODO: remove
         result = []
 
         fields = appmodel._meta.local_fields
@@ -460,7 +462,7 @@ class Command(BaseCommand):
             if field.attname.endswith('_ptr_id'):  # excluding field redundant with inheritance relation
                 continue
             if field in abstract_fields:
-                # excluding fields inherited from abstract classes. they too show as local_fields
+                # excluding fields inherited from abstract classes. they duplicate as local_fields
                 continue
             if self.get_field_name(field) in self.exclude_fields:
                 continue
