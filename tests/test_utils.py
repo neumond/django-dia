@@ -301,3 +301,46 @@ def test_relation_from_abstract_model():
     ]
     data = utils.prepare_model_relations(anyapp_models.GroceryGoods)
     assert data == []
+
+
+def test_prepare_model_inheritance():
+    f = utils.prepare_model_inheritance
+
+    data = f(anyapp_models.Dog)
+    assert data == [
+        {
+            'start_label': '',
+            'end_label': 'multi-table',
+            'start_obj': anyapp_models.Dog,
+            'end_obj': anyapp_models.Pet,
+            'dotted': True,
+            'directional': True,
+            'color': AnyValue(),
+        }
+    ]
+
+    data = f(anyapp_models.Circle)
+    assert data == [
+        {
+            'start_label': '',
+            'end_label': 'abstract',
+            'start_obj': anyapp_models.Circle,
+            'end_obj': anyapp_models.AbstractShape,
+            'dotted': True,
+            'directional': True,
+            'color': AnyValue(),
+        }
+    ]
+
+    data = f(anyapp_models.ProxyShop)
+    assert data == [
+        {
+            'start_label': '',
+            'end_label': 'proxy',
+            'start_obj': anyapp_models.ProxyShop,
+            'end_obj': anyapp_models.Shop,
+            'dotted': True,
+            'directional': True,
+            'color': AnyValue(),
+        }
+    ]

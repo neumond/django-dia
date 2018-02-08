@@ -145,3 +145,10 @@ class AbstractGoods(models.Model):
 
 class GroceryGoods(AbstractGoods):
     weight = models.FloatField()
+
+
+class ProxyShop(Shop):
+    address = models.TextField()
+
+    class Meta:
+        proxy = True
