@@ -10,6 +10,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     # end
     'django-dia',
+    'test_project.anyapp',
 )
 
 DATABASES = {

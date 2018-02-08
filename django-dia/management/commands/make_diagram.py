@@ -10,12 +10,19 @@ import os
 import random
 import gzip
 from distutils.version import StrictVersion
+from importlib import import_module
 
 import six
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 from django import get_version
+
+utils = import_module('django-dia.utils')
+get_full_model_list = utils.get_full_model_list
+get_model_name = utils.get_model_name
+get_model_abstract_fields = utils.get_model_abstract_fields
+prepare_field = utils.prepare_field
 
 
 DJANGO_VERSION = get_version()
@@ -24,11 +31,9 @@ DJANGO_VERSION = get_version()
 if StrictVersion(DJANGO_VERSION) >= StrictVersion('1.9'):
     from django.contrib.contenttypes.fields import GenericRelation
     from django.apps import apps
-    get_models = apps.get_models
     get_apps = apps.app_configs.items
     get_app = apps.get_app_config
 else:
-    from django.db.models import get_models
     from django.db.models import get_apps
     from django.db.models import get_app
     try:
@@ -71,25 +76,6 @@ def parse_file_or_list(arg):
     if ',' not in arg and os.path.isfile(arg):
         return [e.strip() for e in open(arg).readlines()]
     return arg.split(',')
-
-
-def get_app_models_with_abstracts(app):
-    appmodels = get_models(app)
-    abstract_models = []
-    for appmodel in appmodels:
-        abstract_models = abstract_models + [abstract_model for abstract_model in appmodel.__bases__
-                                             if hasattr(abstract_model, '_meta') and abstract_model._meta.abstract]
-    abstract_models = list(set(abstract_models))  # remove duplicates
-    return abstract_models + appmodels
-
-
-def get_model_abstract_fields(model):
-    result = []
-    for e in model.__bases__:
-        if hasattr(e, '_meta') and e._meta.abstract:
-            result.extend(e._meta.fields)
-            result.extend(get_model_abstract_fields(e))
-    return result
 
 
 def make_dia_attribute(parent, name, atype, value):
@@ -240,12 +226,16 @@ class Command(BaseCommand):
         obj_num = 0
         obj_ref = []
 
-        model_list = self.get_full_model_list(apps)
+        model_list = get_full_model_list(
+            apps,
+            exclude_modules=self.exclude_modules,
+            exclude_fields=self.exclude_fields
+        )
         for model in model_list:
             mdata = {
                 'id': obj_num,
                 'pos': (random.random() * 80, random.random() * 80),
-                'name': self.get_model_name(model),
+                'name': get_model_name(model),
                 'fields': self.get_model_fields(model),
                 'color': get_model_color(app_colors, model),
                 'port_idx': 0,
@@ -395,33 +385,6 @@ class Command(BaseCommand):
     def get_field_name(self, field):
         return field.verbose_name if self.verbose_names and field.verbose_name else field.name
 
-    def get_model_name(self, model):
-        return model._meta.object_name
-
-    def get_full_model_list(self, apps):
-        result = []
-        for app in apps:
-            result.extend(get_app_models_with_abstracts(app))
-
-        result = list(set(result))
-        if self.exclude_modules:
-            result = list(filter(lambda model: model.__module__ not in self.exclude_modules, result))
-        if self.exclude_fields:
-            result = list(filter(lambda model: self.get_model_name(model) not in self.exclude_fields, result))
-
-        return result
-
-    def prepare_field(self, field):
-        return {
-            'field': field,
-            'name': field.name,
-            'type': type(field).__name__,
-            'comment': field.verbose_name,
-            'primary_key': field.primary_key,
-            'nullable': field.null,
-            'unique': field.unique,
-        }
-
     def get_model_fields(self, appmodel):
         result = []
 
@@ -430,14 +393,14 @@ class Command(BaseCommand):
         # find primary key and print it first, ignoring implicit id if other pk exists
         pk = appmodel._meta.pk
         if pk and pk in fields and not appmodel._meta.abstract:
-            result.append(self.prepare_field(pk))
+            result.append(prepare_field(pk))
 
         for field in fields:
             if self.get_field_name(field) in self.exclude_fields:
                 continue
             if pk and field == pk:
                 continue
-            result.append(self.prepare_field(field))
+            result.append(prepare_field(field))
 
         if self.sort_fields:
             result = sorted(result, key=lambda field: (not field['primary_key'], field['name']))
@@ -468,7 +431,7 @@ class Command(BaseCommand):
         else:
             target_field = target_model._meta.pk
 
-        if self.get_model_name(target_model) in self.exclude_models:
+        if get_model_name(target_model) in self.exclude_models:
             return
 
         color = '000000'
