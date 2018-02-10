@@ -148,7 +148,5 @@ class GroceryGoods(AbstractGoods):
 
 
 class ProxyShop(Shop):
-    address = models.TextField()
-
     class Meta:
         proxy = True
