@@ -104,6 +104,18 @@ def prepare_data(model_list, inheritance=False):
                 except KeyError:
                     pass
 
+    for mdata in model_data:
+        del mdata['ports']
+        del mdata['field_to_index']
+    for rel in rel_data:
+        del rel['start_obj']
+        del rel['end_obj']
+        rel.pop('start_field', None)
+        rel.pop('end_field', None)
+
+    # at this point all data is JSON-serializable
+    # and contains no objects
+
     return model_data, rel_data
 
 
