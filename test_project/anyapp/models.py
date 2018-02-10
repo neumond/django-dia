@@ -88,6 +88,8 @@ class Picture(models.Model):
 
 class Like(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
+    picture = models.ForeignKey(Picture, on_delete=models.CASCADE)
+    poster = models.ForeignKey('Poster', on_delete=models.CASCADE)
 
 
 class Poster(models.Model):
