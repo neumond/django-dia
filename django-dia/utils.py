@@ -1,24 +1,11 @@
-from distutils.version import StrictVersion
-
-from django import get_version as django_version
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
+from django.contrib.contenttypes.fields import GenericRelation
+from django.apps import apps
 
 
-if StrictVersion(django_version()) >= StrictVersion('1.9'):
-    from django.contrib.contenttypes.fields import GenericRelation
-    from django.apps import apps
-    get_models = apps.get_models
-    get_apps = apps.app_configs.items
-    get_app = apps.get_app_config
-else:
-    from django.db.models import get_models
-    from django.db.models import get_apps
-    from django.db.models import get_app
-    try:
-        from django.db.models.fields.generic import GenericRelation
-        assert GenericRelation
-    except ImportError:
-        from django.contrib.contenttypes.generic import GenericRelation
+get_models = apps.get_models
+get_apps = apps.app_configs.items
+get_app = apps.get_app_config
 
 
 def get_target_apps(appnames, allapps=False):
