@@ -24,6 +24,7 @@ get_model_fields = utils.prepare_model_fields
 get_model_inheritance = utils.prepare_model_inheritance
 get_apps = utils.get_apps
 get_app = utils.get_app
+get_target_apps = utils.get_target_apps
 
 
 def get_empty_xml():
@@ -159,15 +160,6 @@ class Command(BaseCommand):
                             help='Use bezier arrows instead of database relation arrows')
 
     def handle(self, *args, **options):
-        apps = []
-        if options['all_applications']:
-            apps = list(get_apps())
-
-        for app_label in options['appnames']:
-            app = get_app(app_label)
-            if app not in apps:
-                apps.append(app)
-
         self.verbose_names = options['verbose_names']
         self.exclude_modules = parse_file_or_list(options['exclude_modules'])
         self.exclude_models = parse_file_or_list(options['exclude_models'])
@@ -187,7 +179,10 @@ class Command(BaseCommand):
         obj_ref = []
 
         model_list = get_full_model_list(
-            apps,
+            get_target_apps(
+                *options['appnames'],
+                allapps=options['all_applications']
+            ),
             exclude_modules=self.exclude_modules,
             exclude_fields=self.exclude_fields
         )

@@ -21,6 +21,20 @@ else:
         from django.contrib.contenttypes.generic import GenericRelation
 
 
+def get_target_apps(*appnames, allapps=False):
+    apps = []
+
+    if allapps:
+        apps = list(get_apps())
+
+    for app_label in appnames:
+        app = get_app(app_label)
+        if app not in apps:
+            apps.append(app)
+
+    return apps
+
+
 def get_app_models_with_abstracts(app):
     appmodels = get_models(app)
     abstract_models = []
@@ -251,6 +265,7 @@ __all__ = (
     prepare_model_fields,
     get_model_name,
     get_full_model_list,
+    get_target_apps,
     get_apps,
     get_app,
 )
