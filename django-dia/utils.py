@@ -95,6 +95,19 @@ def does_m2m_auto_create_table(m2m_field):
     return False
 
 
+def get_relation_target_field(rel_field):
+    # newer django
+    if hasattr(rel_field, 'target_field'):
+        return rel_field.target_field
+
+    # 1.8 compat
+    target_model = rel_field.related_model
+    if getattr(rel_field.rel, 'field_name', None):
+        return target_model._meta.get_field(rel_field.rel.field_name)
+    else:
+        return target_model._meta.pk
+
+
 def prepare_field(field):
     return {
         'name': field.name,
@@ -157,7 +170,7 @@ def prepare_relation(field, start_label, end_label, dotted=False):
         'start_obj': field.model,
         'end_obj': field.related_model,
         'start_field': field,
-        'end_field': field.target_field,
+        'end_field': get_relation_target_field(field),
     })
     return r
 
