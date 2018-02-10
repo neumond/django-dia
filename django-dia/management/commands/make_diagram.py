@@ -11,6 +11,7 @@ import random
 import gzip
 from importlib import import_module
 import pkgutil
+from itertools import count
 
 import six
 import xml.etree.ElementTree as ET
@@ -188,12 +189,12 @@ class Command(BaseCommand):
 
         app_colors = {}
 
-        obj_num = 0
+        obj_num = count()
         obj_ref = []
 
         for model in model_list:
             mdata = {
-                'id': obj_num,
+                'id': next(obj_num),
                 'pos': (random.random() * 80, random.random() * 80),
                 'name': get_model_name(model),
                 'fields': get_model_fields(model),
@@ -201,21 +202,19 @@ class Command(BaseCommand):
                 'port_idx': 0,
             }
             self.xml_make_table(mdata)
-            obj_ref.append((obj_num, model, mdata))
-            obj_num += 1
+            obj_ref.append((mdata['id'], model, mdata))
 
         for model in model_list:
             for rel in get_model_relations(model):
                 try:
-                    self.prepare_relation_stage2(obj_ref, rel, obj_num)
+                    self.prepare_relation_stage2(obj_ref, rel, next(obj_num))
                     self.xml_make_relation(rel)
-                    obj_num += 1
                 except ModelNotFoundException:
                     pass
             if self.inheritance:
                 for rel in get_model_inheritance(model):
                     try:
-                        self.prepare_relation_stage2(obj_ref, rel, obj_num)
+                        self.prepare_relation_stage2(obj_ref, rel, next(obj_num))
                         self.xml_make_relation(rel)
                     except ModelNotFoundException:
                         pass
