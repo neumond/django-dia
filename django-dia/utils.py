@@ -185,7 +185,7 @@ def prepare_model_relations(model):
 
     for field in get_model_local_fields(model):
         if field.attname.endswith('_ptr_id'):  # excluding field redundant with inheritance relation
-            # TODO: recheck this
+            # write test for this
             continue
         if field in abstract_fields:
             # excluding fields inherited from abstract classes. they duplicate as local_fields
@@ -240,14 +240,12 @@ def prepare_model_inheritance(model):
 
 
 __all__ = (
-    prepare_model_inheritance,
-    prepare_model_relations,
-    prepare_model_fields,
-    get_model_name,
-    get_model_applabel,
-    get_model_label,
     get_full_model_list,
     get_target_apps,
-    get_apps,
-    get_app,
+    get_model_label,
+    get_model_applabel,
+    get_model_name,
+    prepare_model_fields,
+    prepare_model_relations,
+    prepare_model_inheritance,
 )
