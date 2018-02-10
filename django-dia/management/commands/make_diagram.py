@@ -11,7 +11,7 @@ import random
 import gzip
 from importlib import import_module
 import pkgutil
-from itertools import count
+from itertools import count, cycle
 
 import six
 import xml.etree.ElementTree as ET
@@ -121,16 +121,6 @@ def field_index(modelrec, field):
     return None
 
 
-def allocate_free_port(modelrec):
-    result = allocate_free_port.port_order[modelrec['port_idx']]
-    modelrec['port_idx'] += 1
-    if modelrec['port_idx'] >= len(allocate_free_port.port_order):
-        modelrec['port_idx'] = 0
-    return result
-
-
-allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
-
 # 0 - 1 - 2 - 3 - 4
 # 5    title      6
 # -----------------
@@ -138,6 +128,8 @@ allocate_free_port.port_order = [2, 1, 3, 9, 8, 10]
 # 14             15
 #      ...
 # 7 - 8 - 9 -10 -11
+
+PORT_ORDER = (2, 1, 3, 9, 8, 10)
 
 
 class Command(BaseCommand):
@@ -201,7 +193,7 @@ class Command(BaseCommand):
                 'name': get_model_name(model),
                 'fields': get_model_fields(model),
                 'color': model_colors.get(model),
-                'port_idx': 0,
+                'ports': cycle(PORT_ORDER),
             }
             self.xml_make_table(mdata)
             obj_ref.append((mdata['id'], model, mdata))
@@ -244,10 +236,10 @@ class Command(BaseCommand):
         rel['end_obj_id'] = end_rec['id']
         idx = None if 'start_field' not in rel or rel['start_field'] is None or rel['start_field'].primary_key \
             else field_index(start_rec, rel['start_field'])
-        rel['start_port'] = allocate_free_port(start_rec) if idx is None else 12 + idx * 2
+        rel['start_port'] = next(start_rec['ports']) if idx is None else 12 + idx * 2
         idx = None if 'end_field' not in rel or rel['end_field'] is None or rel['end_field'].primary_key \
             else field_index(end_rec, rel['end_field'])
-        rel['end_port'] = allocate_free_port(end_rec) if idx is None else 12 + idx * 2
+        rel['end_port'] = next(end_rec['ports']) if idx is None else 12 + idx * 2
 
     def xml_make_table(self, data):
         obj = ET.SubElement(self.layer, 'dia:object', attrib={
