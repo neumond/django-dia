@@ -27,6 +27,7 @@ get_apps = utils.get_apps
 get_app = utils.get_app
 get_target_apps = utils.get_target_apps
 get_model_label = utils.get_model_label
+get_model_applabel = utils.get_model_applabel
 
 
 def get_empty_xml():
@@ -87,13 +88,15 @@ def get_rand_color():
     return (hex(r)[-2:] + hex(g)[-2:] + hex(b)[-2:]).upper()
 
 
-def get_model_color(app_colors, model):
-    label = model._meta.app_label
-    if label in app_colors:
-        return app_colors[label]
-    newcolor = get_rand_color()
-    app_colors[label] = newcolor
-    return newcolor
+class ModelColors:
+    def __init__(self):
+        self.colors = {}
+
+    def get(self, model):
+        label = get_model_applabel(model)
+        if label not in self.colors:
+            self.colors[label] = get_rand_color()
+        return self.colors[label]
 
 
 class ModelNotFoundException(Exception):
@@ -187,8 +190,7 @@ class Command(BaseCommand):
         dom = ET.fromstring(get_empty_xml())
         self.layer = dom.find('dia:layer', namespaces=ns)
 
-        app_colors = {}
-
+        model_colors = ModelColors()
         obj_num = count()
         obj_ref = []
 
@@ -198,7 +200,7 @@ class Command(BaseCommand):
                 'pos': (random.random() * 80, random.random() * 80),
                 'name': get_model_name(model),
                 'fields': get_model_fields(model),
-                'color': get_model_color(app_colors, model),
+                'color': model_colors.get(model),
                 'port_idx': 0,
             }
             self.xml_make_table(mdata)

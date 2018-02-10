@@ -54,8 +54,12 @@ def get_model_name(model):
     return model._meta.object_name
 
 
+def get_model_applabel(model):
+    return model._meta.app_label
+
+
 def get_model_label(model):
-    return '{}.{}'.format(model._meta.app_label, get_model_name(model))
+    return '{}.{}'.format(get_model_applabel(model), get_model_name(model))
 
 
 def get_full_model_list(apps, exclude_models=set()):
@@ -266,8 +270,9 @@ __all__ = (
     prepare_model_relations,
     prepare_model_fields,
     get_model_name,
-    get_full_model_list,
+    get_model_applabel,
     get_model_label,
+    get_full_model_list,
     get_target_apps,
     get_apps,
     get_app,
