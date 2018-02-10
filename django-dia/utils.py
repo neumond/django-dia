@@ -82,6 +82,11 @@ def get_model_m2m_fields(model):
 
 
 def get_m2m_through_model(m2m_field):
+    # django 2.0 and higher
+    if not hasattr(m2m_field, 'rel'):
+        return m2m_field.remote_field.through
+
+    # older django
     return m2m_field.rel.through
 
 
