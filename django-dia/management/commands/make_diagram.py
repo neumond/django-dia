@@ -11,7 +11,6 @@ import random
 import gzip
 from importlib import import_module
 import pkgutil
-from functools import lru_cache
 
 import six
 import xml.etree.ElementTree as ET
@@ -27,7 +26,6 @@ get_apps = utils.get_apps
 get_app = utils.get_app
 
 
-@lru_cache(maxsize=1)
 def get_empty_xml():
     return pkgutil.get_data(__package__, 'empty.xml')
 
@@ -222,10 +220,13 @@ class Command(BaseCommand):
                     except ModelNotFoundException:
                         pass
 
-        xml = six.b('<?xml version="1.0" encoding="UTF-8"?>') + \
-            ET.tostring(dom, encoding='utf-8')
+        self.write_output(
+            u'<?xml version="1.0" encoding="UTF-8"?>'.encode('utf-8') +
+            ET.tostring(dom, encoding='utf-8'),
+            options['outputfile']
+        )
 
-        outfile = options['outputfile']
+    def write_output(self, xml, outfile):
         if outfile:
             if outfile[-4:] != '.dia':
                 outfile += '.dia'
