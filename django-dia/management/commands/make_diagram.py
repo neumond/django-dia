@@ -144,21 +144,21 @@ class Command(BaseCommand):
         parser.add_argument('--all-applications', '-a', action='store_true', dest='all_applications',
                             help='Automatically include all applications from INSTALLED_APPS')
         parser.add_argument('--output', '-o', action='store', dest='outputfile',
-                            help='Render output file.'),
+                            help='Render output file.')
         parser.add_argument('--verbose-names', '-n', action='store_true', dest='verbose_names',
-                            help='Use verbose_name of models and fields'),
+                            help='Use verbose_name of models and fields')
         parser.add_argument('--exclude-columns', '-x', action='store', dest='exclude_columns',
-                            help='Exclude specific column(s) from the graph. Can also load exclude list from file.'),
+                            help='Exclude specific column(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--exclude-models', '-X', action='store', dest='exclude_models',
-                            help='Exclude specific model(s) from the graph. Can also load exclude list from file.'),
+                            help='Exclude specific model(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--exclude-modules', '-M', action='store', dest='exclude_modules',
-                            help='Exclude specific module(s) from the graph. Can also load exclude list from file.'),
+                            help='Exclude specific module(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--inheritance', '-e', action='store_true', dest='inheritance',
-                            help='Include inheritance arrows'),
+                            help='Include inheritance arrows')
         parser.add_argument('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
-                            default=True, help="Do not sort fields"),
+                            default=True, help="Do not sort fields")
         parser.add_argument('--bezier', action='store_true', dest='bezier',
-                            help='Use bezier arrows instead of database relation arrows'),
+                            help='Use bezier arrows instead of database relation arrows')
 
     def handle(self, *args, **options):
         apps = []
