@@ -25,6 +25,7 @@ get_model_inheritance = utils.prepare_model_inheritance
 get_apps = utils.get_apps
 get_app = utils.get_app
 get_target_apps = utils.get_target_apps
+get_model_label = utils.get_model_label
 
 
 def get_empty_xml():
@@ -33,10 +34,11 @@ def get_empty_xml():
 
 def parse_file_or_list(arg):
     if not arg:
-        return []
+        return set()
     if ',' not in arg and os.path.isfile(arg):
-        return [e.strip() for e in open(arg).readlines()]
-    return arg.split(',')
+        with open(arg) as f:
+            return {line.strip() for line in f.readlines()}
+    return set(arg.split(','))
 
 
 def make_dia_attribute(parent, name, atype, value):
@@ -150,6 +152,8 @@ class Command(BaseCommand):
                             help='Exclude specific column(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--exclude-models', '-X', action='store', dest='exclude_models',
                             help='Exclude specific model(s) from the graph. Can also load exclude list from file.')
+        parser.add_argument('--pretend', '-p', action='store_true', dest='pretend',
+                            help='Output list of models in format suitable for exclusion options')
         parser.add_argument('--inheritance', '-e', action='store_true', dest='inheritance',
                             help='Include inheritance arrows')
         parser.add_argument('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
@@ -158,8 +162,20 @@ class Command(BaseCommand):
                             help='Use bezier arrows instead of database relation arrows')
 
     def handle(self, *args, **options):
+        model_list = get_full_model_list(
+            get_target_apps(
+                *options['appnames'],
+                allapps=options['all_applications']
+            ),
+            exclude_models=parse_file_or_list(options['exclude_models'])
+        )
+
+        if options['pretend']:
+            for lbl in sorted(get_model_label(m) for m in model_list):
+                self.stdout.write(lbl)
+            return
+
         self.verbose_names = options['verbose_names']
-        self.exclude_models = parse_file_or_list(options['exclude_models'])
         self.exclude_fields = parse_file_or_list(options['exclude_columns'])
         self.inheritance = options['inheritance']
         self.sort_fields = options['sort_fields']
@@ -175,13 +191,6 @@ class Command(BaseCommand):
         obj_num = 0
         obj_ref = []
 
-        model_list = get_full_model_list(
-            get_target_apps(
-                *options['appnames'],
-                allapps=options['all_applications']
-            ),
-            exclude_fields=self.exclude_fields
-        )
         for model in model_list:
             mdata = {
                 'id': obj_num,

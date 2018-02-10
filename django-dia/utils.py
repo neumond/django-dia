@@ -35,34 +35,34 @@ def get_target_apps(*appnames, allapps=False):
     return apps
 
 
+def is_class_a_model(m):
+    return hasattr(m, '_meta')
+
+
 def get_app_models_with_abstracts(app):
-    appmodels = get_models(app)
-    abstract_models = []
+    appmodels = set(get_models(app))
+    abstract_models = set()
     for appmodel in appmodels:
-        abstract_models = abstract_models + [abstract_model for abstract_model in appmodel.__bases__
-                                             if hasattr(abstract_model, '_meta') and abstract_model._meta.abstract]
-    abstract_models = list(set(abstract_models))  # remove duplicates
-    return abstract_models + appmodels
+        abstract_models.update({
+            abstract_model for abstract_model in appmodel.__bases__
+            if is_class_a_model(abstract_model) and abstract_model._meta.abstract
+        })
+    return list(abstract_models | appmodels)
 
 
 def get_model_name(model):
     return model._meta.object_name
 
 
-def get_full_model_list(apps, exclude_fields=set()):
-    result = []
+def get_model_label(model):
+    return '{}.{}'.format(model._meta.app_label, get_model_name(model))
+
+
+def get_full_model_list(apps, exclude_models=set()):
+    result = set()
     for app in apps:
-        result.extend(get_app_models_with_abstracts(app))
-
-    result = list(set(result))
-
-    # for m in result:
-    #     print(get_model_name(m))
-
-    if exclude_fields:  # TODO: fields?
-        result = list(filter(lambda model: get_model_name(model) not in exclude_fields, result))
-
-    return result
+        result.update(get_app_models_with_abstracts(app))
+    return {m for m in result if get_model_label(m) not in exclude_models}
 
 
 def get_model_local_fields(model):
@@ -84,7 +84,7 @@ def is_model_abstract(model):
 def get_model_abstract_fields(model):
     result = []
     for e in model.__bases__:
-        if hasattr(e, '_meta') and e._meta.abstract:
+        if is_class_a_model(e) and e._meta.abstract:
             result.extend(e._meta.fields)
             result.extend(get_model_abstract_fields(e))
     return result
@@ -103,7 +103,7 @@ def does_m2m_auto_create_table(m2m_field):
     if getattr(m2m_field, 'creates_table', False):  # django 1.1, TODO: remove?
         return True
     through = get_m2m_through_model(m2m_field)
-    if hasattr(through, '_meta') and through._meta.auto_created:  # django 1.2
+    if is_class_a_model(through) and through._meta.auto_created:  # django 1.2
         return True
     return False
 
@@ -243,7 +243,7 @@ def prepare_model_relations(model):
 def prepare_model_inheritance(model):
     result = []
     for parent in model.__bases__:
-        if hasattr(parent, '_meta'):  # parent is a model
+        if is_class_a_model(parent):
             label = 'multi-table'
             if parent._meta.abstract:
                 label = 'abstract'
@@ -267,6 +267,7 @@ __all__ = (
     prepare_model_fields,
     get_model_name,
     get_full_model_list,
+    get_model_label,
     get_target_apps,
     get_apps,
     get_app,
