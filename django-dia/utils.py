@@ -91,11 +91,8 @@ def get_m2m_through_model(m2m_field):
 
 
 def does_m2m_auto_create_table(m2m_field):
-    # TODO: improve
-    if getattr(m2m_field, 'creates_table', False):  # django 1.1, TODO: remove?
-        return True
     through = get_m2m_through_model(m2m_field)
-    if is_class_a_model(through) and through._meta.auto_created:  # django 1.2
+    if is_class_a_model(through) and through._meta.auto_created:
         return True
     return False
 
