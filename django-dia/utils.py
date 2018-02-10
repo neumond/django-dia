@@ -179,31 +179,6 @@ def prepare_relation(field, start_label, end_label, dotted=False):
     return r
 
 
-def prepare_m2m_through_relation(m2m_field):
-    assert m2m_field.is_relation
-    a = get_relation_base('n', '1')
-    b = get_relation_base('n', '1')
-    through = m2m_field.rel.through
-
-    if m2m_field.rel.through_fields is not None:
-        # specific fields already create relationships
-        return []
-
-    a.update({
-        'start_obj': through,
-        'end_obj': m2m_field.model,
-        'start_field': None,  # TODO:
-        'end_field': get_model_pk_field(m2m_field.model),
-    })
-    b.update({
-        'start_obj': through,
-        'end_obj': m2m_field.related_model,
-        'start_field': None,  # TODO:
-        'end_field': get_model_pk_field(m2m_field.related_model),
-    })
-    return [a, b]
-
-
 def prepare_model_relations(model):
     result = []
     abstract_fields = get_model_abstract_fields(model)
@@ -234,8 +209,7 @@ def prepare_model_relations(model):
         if isinstance(field, ManyToManyField):
             if does_m2m_auto_create_table(field):
                 result.append(prepare_relation(field, 'n', 'n'))
-            else:
-                result.extend(prepare_m2m_through_relation(field))
+            # otherwise ignore this m2m
         elif isinstance(field, GenericRelation):
             result.append(prepare_relation(field, 'n', 'n', dotted=True))
         else:
