@@ -19,9 +19,9 @@ def test_get_model_name(django_user_model):
 def test_get_target_apps():
     f = utils.get_target_apps
 
-    assert len(f()) == 0
-    assert len(f(allapps=True)) > 0
-    assert len(f('anyapp')) == 1
+    assert len(f(())) == 0
+    assert len(f((), allapps=True)) > 0
+    assert len(f(('anyapp', ))) == 1
 
 
 def test_get_app_models_with_abstracts(anyapp):

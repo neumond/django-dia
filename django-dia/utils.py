@@ -21,7 +21,7 @@ else:
         from django.contrib.contenttypes.generic import GenericRelation
 
 
-def get_target_apps(*appnames, allapps=False):
+def get_target_apps(appnames, allapps=False):
     apps = []
 
     if allapps:

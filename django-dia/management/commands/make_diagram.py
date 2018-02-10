@@ -51,7 +51,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         model_list = utils.get_full_model_list(
             utils.get_target_apps(
-                *options['appnames'],
+                options['appnames'],
                 allapps=options['all_applications']
             ),
             exclude_models=parse_file_or_list(options['exclude_models'])
