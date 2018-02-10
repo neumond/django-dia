@@ -251,13 +251,13 @@ def xml_make_relation(data, bezier=False):
     conns = ET.SubElement(rel, 'dia:connections')
     ET.SubElement(conns, 'dia:connection', attrib={
         'handle': '0',
-        'to': 'O{}'.format(data['end_obj_id']),
-        'connection': six.text_type(data['end_port']),
+        'to': 'O{}'.format(data['start_obj_id']),
+        'connection': six.text_type(data['start_port']),
     })
     ET.SubElement(conns, 'dia:connection', attrib={
         'handle': '3' if bezier else '1',
-        'to': 'O{}'.format(data['start_obj_id']),
-        'connection': six.text_type(data['start_port']),
+        'to': 'O{}'.format(data['end_obj_id']),
+        'connection': six.text_type(data['end_port']),
     })
 
     rel.extend([
