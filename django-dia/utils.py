@@ -3,23 +3,19 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.apps import apps
 
 
-get_models = apps.get_models
-get_apps = apps.app_configs.items
-get_app = apps.get_app_config
+def get_apps():
+    return set(apps.app_configs.values())
+
+
+def get_app(app_label):
+    return apps.get_app_config(app_label)
 
 
 def get_target_apps(appnames, allapps=False):
-    apps = []
-
-    if allapps:
-        apps = list(get_apps())
-
+    apps = get_apps() if allapps else set()
     for app_label in appnames:
-        app = get_app(app_label)
-        if app not in apps:
-            apps.append(app)
-
-    return apps
+        apps.add(get_app(app_label))
+    return list(apps)
 
 
 def is_class_a_model(m):
@@ -27,7 +23,7 @@ def is_class_a_model(m):
 
 
 def get_app_models_with_abstracts(app):
-    appmodels = set(get_models(app))
+    appmodels = set(app.get_models())
     abstract_models = set()
     for appmodel in appmodels:
         abstract_models.update({

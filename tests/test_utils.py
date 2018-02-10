@@ -26,7 +26,7 @@ def test_get_target_apps():
 
 def test_get_app_models_with_abstracts(anyapp):
     # usual django mechanism
-    models = utils.get_models(anyapp)
+    models = set(anyapp.get_models())
     assert anyapp_models.Circle in models
     assert anyapp_models.AbstractShape not in models
 
