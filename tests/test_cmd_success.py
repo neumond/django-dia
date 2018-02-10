@@ -1,6 +1,12 @@
 from django.core.management import call_command
+from django.core.checks import run_checks
 from django.utils.six import StringIO
 import xml.etree.ElementTree as ET
+
+
+def test_django_model_checks():
+    errors = run_checks()
+    assert errors == []
 
 
 def call_cmd(**opts):
