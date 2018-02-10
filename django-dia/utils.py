@@ -49,14 +49,16 @@ def get_model_name(model):
     return model._meta.object_name
 
 
-def get_full_model_list(apps, exclude_modules=set(), exclude_fields=set()):
+def get_full_model_list(apps, exclude_fields=set()):
     result = []
     for app in apps:
         result.extend(get_app_models_with_abstracts(app))
 
     result = list(set(result))
-    if exclude_modules:
-        result = list(filter(lambda model: model.__module__ not in exclude_modules, result))
+
+    # for m in result:
+    #     print(get_model_name(m))
+
     if exclude_fields:  # TODO: fields?
         result = list(filter(lambda model: get_model_name(model) not in exclude_fields, result))
 

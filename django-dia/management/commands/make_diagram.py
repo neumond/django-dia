@@ -150,8 +150,6 @@ class Command(BaseCommand):
                             help='Exclude specific column(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--exclude-models', '-X', action='store', dest='exclude_models',
                             help='Exclude specific model(s) from the graph. Can also load exclude list from file.')
-        parser.add_argument('--exclude-modules', '-M', action='store', dest='exclude_modules',
-                            help='Exclude specific module(s) from the graph. Can also load exclude list from file.')
         parser.add_argument('--inheritance', '-e', action='store_true', dest='inheritance',
                             help='Include inheritance arrows')
         parser.add_argument('--disable-sort-fields', '-S', action="store_false", dest="sort_fields",
@@ -161,7 +159,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.verbose_names = options['verbose_names']
-        self.exclude_modules = parse_file_or_list(options['exclude_modules'])
         self.exclude_models = parse_file_or_list(options['exclude_models'])
         self.exclude_fields = parse_file_or_list(options['exclude_columns'])
         self.inheritance = options['inheritance']
@@ -183,7 +180,6 @@ class Command(BaseCommand):
                 *options['appnames'],
                 allapps=options['all_applications']
             ),
-            exclude_modules=self.exclude_modules,
             exclude_fields=self.exclude_fields
         )
         for model in model_list:
