@@ -34,7 +34,7 @@ setup(
     ],
     keywords='django dia model diagram',
     packages=['django-dia', 'django-dia.management', 'django-dia.management.commands'],
-    package_data={'django-dia.management.commands': ['empty.xml']},
+    package_data={'django-dia': ['empty.xml']},
     install_requires=['Django', 'six'],
     extras_require={
         'tests': ['pytest', 'pytest-django', 'pytest-pythonpath']
