@@ -130,3 +130,21 @@ class GroceryGoods(AbstractGoods):
 class ProxyShop(Shop):
     class Meta:
         proxy = True
+
+
+# Textual FK in abstract model
+
+
+class AbstractModelG(models.Model):
+    field = models.ForeignKey('ReferencedModelG', on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+
+
+class RealModelG(AbstractModelG):
+    other_field = models.CharField(max_length=100)
+
+
+class ReferencedModelG(models.Model):
+    field = models.FloatField()
