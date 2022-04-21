@@ -3,7 +3,7 @@ from importlib import import_module
 import pytest
 
 from test_project.anyapp import models as anyapp_models
-utils = import_module('django-dia.utils')
+utils = import_module('django_dia.utils')
 
 
 @pytest.fixture

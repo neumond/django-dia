@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.org/neumond/django-dia.svg?branch=master
-    :target: https://travis-ci.org/neumond/django-dia
+.. image:: https://travis-ci.org/neumond/django_dia.svg?branch=master
+    :target: https://travis-ci.org/neumond/django_dia
 
 Goals
 =====
@@ -21,18 +21,18 @@ Installation
 
 .. code:: bash
 
-    pip install django-dia
+    pip install django_dia
 
 Using
 =====
 
-Add *django-dia* to your *INSTALLED_APPS*:
+Add *django_dia* to your *INSTALLED_APPS*:
 
 .. code:: python
 
     INSTALLED_APPS = (
         #...
-        'django-dia',
+        'django_dia',
     )
 
 And run
