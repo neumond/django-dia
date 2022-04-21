@@ -14,7 +14,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # end
-    'django-dia',
+    'django_dia',
     'test_project.anyapp',
 )
 

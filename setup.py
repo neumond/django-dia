@@ -17,11 +17,11 @@ if is_register_command(argv[1:]):
 
 
 setup(
-    name='django-dia',
+    name='django_dia',
     version='0.4.1',
     description='Generate .dia diagram of your django project\'s models',
     long_description=longdesc,
-    url='https://github.com/neumond/django-dia',
+    url='https://github.com/neumond/django_dia',
     author='Vitalik Verhovodov',
     author_email='knifeslaughter@gmail.com',
     license='MIT',
@@ -33,8 +33,8 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     keywords='django dia model diagram',
-    packages=['django-dia', 'django-dia.management', 'django-dia.management.commands'],
-    package_data={'django-dia': ['empty.xml']},
+    packages=['django_dia', 'django_dia.management', 'django_dia.management.commands'],
+    package_data={'django_dia': ['empty.xml']},
     install_requires=['Django', 'six'],
     extras_require={
         'tests': ['pytest', 'pytest-django', 'pytest-pythonpath']
