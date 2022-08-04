@@ -1,5 +1,5 @@
-from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 from django.contrib.contenttypes.fields import GenericRelation
+from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToManyField
 from django.apps import apps
 
 

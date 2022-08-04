@@ -1,7 +1,6 @@
-import six
-import xml.etree.ElementTree as ET
 import pkgutil
 import random
+import xml.etree.ElementTree as ET
 from itertools import count, cycle
 from functools import partial
 
@@ -10,7 +9,7 @@ from . import utils
 
 XML_NAMESPACES = {'dia': 'http://www.lysator.liu.se/~alla/dia/'}
 
-for k, v in six.iteritems(XML_NAMESPACES):
+for k, v in XML_NAMESPACES.items():
     ET.register_namespace(k, v)
 
 
@@ -144,9 +143,9 @@ def make_dia_attribute(name, atype, value):
         value = '#' + value
     elif atype == 'font':
         attribs = {
-            'family': six.text_type(value[0]),
-            'style': six.text_type(value[1]),
-            'name': six.text_type(value[2])
+            'family': str(value[0]),
+            'style': str(value[1]),
+            'name': str(value[2])
         }
     else:
         raise ValueError('Unknown type')
@@ -252,12 +251,12 @@ def xml_make_relation(data, bezier=False):
     ET.SubElement(conns, 'dia:connection', attrib={
         'handle': '0',
         'to': 'O{}'.format(data['start_obj_id']),
-        'connection': six.text_type(data['start_port']),
+        'connection': str(data['start_port']),
     })
     ET.SubElement(conns, 'dia:connection', attrib={
         'handle': '3' if bezier else '1',
         'to': 'O{}'.format(data['end_obj_id']),
-        'connection': six.text_type(data['end_port']),
+        'connection': str(data['end_port']),
     })
 
     rel.extend([

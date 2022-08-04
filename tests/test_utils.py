@@ -1,9 +1,7 @@
-from importlib import import_module
-
 import pytest
 
+from django_dia import utils
 from test_project.anyapp import models as anyapp_models
-utils = import_module('django_dia.utils')
 
 
 @pytest.fixture
@@ -11,8 +9,7 @@ def anyapp():
     return utils.get_app('anyapp')
 
 
-def test_get_model_name(django_user_model):
-    assert utils.get_model_name(django_user_model) == 'User'
+def test_get_model_name():
     assert utils.get_model_name(anyapp_models.Person) == 'Person'
 
 
@@ -248,22 +245,32 @@ def test_relations_n_n_through():
 
 
 def test_relation_from_abstract_model():
+    rel_to_shop = {
+        'start_label': 'n',
+        'end_label': '1',
+        'end_obj': anyapp_models.Shop,
+        'end_field': utils.get_model_pk_field(anyapp_models.Shop),
+        'color': AnyValue(),
+        'dotted': False,
+        'directional': True,
+    }
+
     data = utils.prepare_model_relations(anyapp_models.AbstractGoods)
     assert data == [
         {
-            'start_label': 'n',
-            'end_label': '1',
             'start_obj': anyapp_models.AbstractGoods,
-            'end_obj': anyapp_models.Shop,
             'start_field': utils.get_model_field_by_name(anyapp_models.AbstractGoods, 'shop'),
-            'end_field': utils.get_model_pk_field(anyapp_models.Shop),
-            'color': AnyValue(),
-            'dotted': False,
-            'directional': True,
+            **rel_to_shop,
         }
     ]
     data = utils.prepare_model_relations(anyapp_models.GroceryGoods)
-    assert data == []
+    assert data == [
+        {
+            'start_obj': anyapp_models.GroceryGoods,
+            'start_field': utils.get_model_field_by_name(anyapp_models.GroceryGoods, 'shop'),
+            **rel_to_shop,
+        }
+    ]
 
 
 def test_prepare_model_inheritance():
