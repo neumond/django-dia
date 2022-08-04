@@ -82,12 +82,7 @@ def get_model_m2m_fields(model):
 
 
 def get_m2m_through_model(m2m_field):
-    # django 2.0 and higher
-    if not hasattr(m2m_field, 'rel'):
-        return m2m_field.remote_field.through
-
-    # older django
-    return m2m_field.rel.through
+    return m2m_field.remote_field.through
 
 
 def does_m2m_auto_create_table(m2m_field):
@@ -98,16 +93,7 @@ def does_m2m_auto_create_table(m2m_field):
 
 
 def get_relation_target_field(rel_field):
-    # newer django
-    if hasattr(rel_field, 'target_field'):
-        return rel_field.target_field
-
-    # 1.8 compat
-    target_model = rel_field.related_model
-    if getattr(rel_field.rel, 'field_name', None):
-        return target_model._meta.get_field(rel_field.rel.field_name)
-    else:
-        return target_model._meta.pk
+    return rel_field.target_field
 
 
 def prepare_field(field):
