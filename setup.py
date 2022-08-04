@@ -17,8 +17,8 @@ if is_register_command(argv[1:]):
 
 
 setup(
-    name='django_dia',
-    version='0.4.1',
+    name='django-dia',
+    version='0.5.0',
     description='Generate .dia diagram of your django project\'s models',
     long_description=longdesc,
     url='https://github.com/neumond/django_dia',
