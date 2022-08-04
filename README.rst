@@ -18,7 +18,7 @@ Installation
 
 .. code:: bash
 
-    pip install django_dia
+    pip install django-dia
 
 Using
 =====
