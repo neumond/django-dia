@@ -44,5 +44,5 @@ This will produce file *scheme.dia* in your project directory.
 Compatibility
 =============
 
-Django >= 1.8 supported. In long term set of supported versions will be
+Django >= 3.0 supported. In long term set of supported versions will be
 in parity with official django support.
