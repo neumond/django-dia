@@ -1,7 +1,11 @@
 from django.core.management import call_command
 from django.core.checks import run_checks
-from django.utils.six import StringIO
 import xml.etree.ElementTree as ET
+
+try:
+    from django.utils.six import StringIO
+except ImportError:
+    from io import StringIO
 
 
 def test_django_model_checks():

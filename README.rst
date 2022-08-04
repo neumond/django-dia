@@ -1,6 +1,3 @@
-.. image:: https://travis-ci.org/neumond/django_dia.svg?branch=master
-    :target: https://travis-ci.org/neumond/django_dia
-
 Goals
 =====
 
