@@ -1,0 +1,38 @@
+name: Django dia
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - python: "2.7.17"
+            django: ">=1.8,<1.9"
+            pytest: "<4.7"
+            os: "ubuntu-18.04"
+
+          - python: "3.6.15"
+            django: ">=1.11,<1.12"
+            pytest: "<4.7"
+            os: "ubuntu-18.04"
+
+          - python: "3.6.15"
+            django: ">=2.0,<2.1"
+            pytest: "<4.7"
+            os: "ubuntu-18.04"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          pip install "pytest${{ matrix.pytest }}" "Django${{ matrix.django }}"
+          pip install -e .[tests]
+      - name: Test with pytest
+        run: |
+          pytest
