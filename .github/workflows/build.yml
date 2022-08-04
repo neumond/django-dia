@@ -22,15 +22,15 @@ jobs:
             pytest: "<4.7"
             os: "ubuntu-18.04"
 
-          - python: "3.9.13"
-            django: ">=3.0,<4.0"
-            pytest: ""
-            os: "ubuntu-20.04"
+          # - python: "3.9.13"
+          #   django: ">=3.0,<4.0"
+          #   pytest: ""
+          #   os: "ubuntu-20.04"
 
-          - python: "3.10.5"
-            django: ">=4.0,<5.0"
-            pytest: ""
-            os: "ubuntu-20.04"
+          # - python: "3.10.5"
+          #   django: ">=4.0,<5.0"
+          #   pytest: ""
+          #   os: "ubuntu-20.04"
 
     runs-on: ${{ matrix.os }}
     steps:
